@@ -1,9 +1,9 @@
 // src/app/(dashboard)/dashboard/page.tsx
 import { auth } from "@/auth";
-import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
-import { EmptyState, NewPlaygroundCard, NewRepoCard } from "@/features/dashboard";
-import { FolderCode, Terminal, Clock } from "lucide-react";
+import { EmptyState, NewPlaygroundCard, NewRepoCard, getUserPlaygroundsAction, ProjectActionsDropdown } from "@/features/dashboard";
+import { FolderCode, Terminal, Clock, ArrowUpRight } from "lucide-react";
+import Link from "next/link";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -11,10 +11,8 @@ export default async function DashboardPage() {
     redirect("/auth/sign-in");
   }
 
-  const playgrounds = await prisma.playground.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-  });
+  const result = await getUserPlaygroundsAction();
+  const playgrounds = result.data || [];
 
   return (
     <div className="w-full max-w-6xl mx-auto space-y-10 animate-fade-in relative pb-12">
@@ -33,7 +31,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* 🚀 STEP 4: THE TWIN PREMIUM CONTROL DECK ENGINE */}
+      {/* THE TWIN PREMIUM CONTROL DECK ENGINE */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <NewPlaygroundCard />
         <NewRepoCard />
@@ -51,25 +49,48 @@ export default async function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {playgrounds.map((project) => (
-              <div
+              <Link
                 key={project.id}
-                className="group relative border border-border/80 bg-card/40 dark:bg-card/20 backdrop-blur-md rounded-2xl p-6 shadow-xs hover:border-primary/40 hover:bg-card/80 dark:hover:bg-card/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col justify-between overflow-hidden"
+                href={`/dashboard/${project.id}`}
+                className="group relative border border-border/80 bg-card/40 dark:bg-card/20 backdrop-blur-md rounded-2xl p-6 shadow-xs hover:border-primary/40 hover:bg-card/80 dark:hover:bg-card/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col justify-between overflow-hidden cursor-pointer"
               >
+                {/* Micro-Interaction Background Hover Gradient */}
                 <div className="absolute -inset-px bg-gradient-to-br from-primary/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                 
-                <div className="relative z-10">
-                  <span className="text-[9px] font-mono font-black tracking-widest text-primary bg-primary/10 dark:bg-primary/5 border border-primary/20 px-2.5 py-0.5 rounded-md shadow-2xs">
-                    {project.template}
-                  </span>
-                  <h3 className="text-base font-bold mt-5 mb-1.5 text-foreground transition-colors group-hover:text-primary">
-                    {project.name}
-                  </h3>
-                  <p className="text-xs text-muted-foreground font-light leading-relaxed mb-6 line-clamp-2">
+                <div className="relative z-10 w-full">
+                  {/* Upper Header Control Row */}
+                  <div className="flex items-center justify-between w-full mb-4">
+                    <span className="text-[9px] font-mono font-black tracking-widest text-primary bg-primary/10 dark:bg-primary/5 border border-primary/20 px-2.5 py-0.5 rounded-md shadow-2xs">
+                      {project.template}
+                    </span>
+                    
+                    {/* 🎛️ CORE OPERATION MENU 
+                      Isolating the interaction click tracking loops cleanly with z-indexed layer bounds
+                    */}
+                    <div className="relative z-20">
+                      <ProjectActionsDropdown 
+                        playgroundId={project.id}
+                        currentTitle={project.title}
+                        currentDesc={project.description || ""}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Title Header paired with modern dynamic hidden action vector */}
+                  <div className="flex items-start justify-between gap-2 mt-2">
+                    <h3 className="text-base font-bold text-foreground transition-colors group-hover:text-primary line-clamp-1">
+                      {project.title}
+                    </h3>
+                    <ArrowUpRight className="w-4 h-4 text-muted-foreground/40 opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all duration-300 shrink-0 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                  </div>
+
+                  <p className="text-xs text-muted-foreground font-light leading-relaxed mb-6 mt-1.5 line-clamp-2">
                     {project.description || "No customized execution environment profile description metadata was provided."}
                   </p>
                 </div>
                 
-                <div className="relative z-10 text-[10px] font-mono text-muted-foreground/60 border-t border-border/40 pt-3.5 mt-auto flex items-center justify-between">
+                {/* Lower Meta Spec Footnotes */}
+                <div className="relative z-10 text-[10px] font-mono text-muted-foreground/60 border-t border-border/40 pt-3.5 mt-auto flex items-center justify-between w-full">
                   <span className="flex items-center gap-1.5 font-medium">
                     <FolderCode className="w-3.5 h-3.5 text-muted-foreground/70" />
                     ID: <span className="text-foreground/80">{project.id.slice(-6).toUpperCase()}</span>
@@ -79,7 +100,7 @@ export default async function DashboardPage() {
                     {new Date(project.createdAt).toLocaleDateString()}
                   </span>
                 </div>
-              </div>
+              </Link>
             ))}
           </div>
         )}

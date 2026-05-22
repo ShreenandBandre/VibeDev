@@ -26,7 +26,7 @@ interface SidebarProps {
     email?: string | null;
     image?: string | null;
   };
-  recents: Array<{ id: string; name: string }>;
+  recents: Array<{ id: string; title: string }>;
 }
 
 export const Sidebar = ({ user, recents }: SidebarProps) => {
@@ -74,7 +74,7 @@ export const Sidebar = ({ user, recents }: SidebarProps) => {
 
   const startResizing = (e: React.MouseEvent) => {
     e.preventDefault();
-    if (isCollapsed) return; // Prevent resizing while detached/collapsed
+    if (isCollapsed) return;
     setIsDragging(true);
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
@@ -85,23 +85,22 @@ export const Sidebar = ({ user, recents }: SidebarProps) => {
     startTransition(async () => {
       const randomTag = Math.random().toString(36).substring(7).toUpperCase();
       await createPlaygroundAction({
-        name: `Sandbox [${randomTag}]`,
+        title: `Sandbox [${randomTag}]`,
         description: "Quick sandbox workspace.",
         template: "REACT",
       });
     });
   };
 
-  // Determine actual rendered width based on collapse state
   const currentWidth = isCollapsed ? 64 : sidebarWidth;
 
   return (
     <div 
       ref={sidebarRef}
       style={{ width: `${currentWidth}px` }}
-      className="relative h-screen border-r border-border/60 bg-card/30 backdrop-blur-md flex flex-col justify-between select-none shrink-0 transition-all duration-300 ease-in-out"
+      className="relative h-screen border-r border-border/60 bg-card/30 backdrop-blur-md flex flex-col justify-between select-none shrink-0 transition-all duration-300 ease-in-out z-40"
     >
-      {/* 🚀 TOGGLE/DETACH BUTTON */}
+      {/* 🚀 TOGGLE/DETACH SWITCH */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="absolute top-7 -right-3 h-6 w-6 rounded-full border border-border bg-card hover:bg-accent text-foreground flex items-center justify-center shadow-sm z-50 cursor-pointer transition-transform hover:scale-105"
@@ -184,7 +183,7 @@ export const Sidebar = ({ user, recents }: SidebarProps) => {
                     className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-all font-sans font-medium truncate shrink-0"
                   >
                     <FolderCode className="w-3.5 h-3.5 text-primary/70 shrink-0" />
-                    <span className="truncate">{project.name}</span>
+                    <span className="truncate">{project.title}</span>
                   </Link>
                 ))
               )}
@@ -202,14 +201,15 @@ export const Sidebar = ({ user, recents }: SidebarProps) => {
           className={`flex items-center border border-border rounded-xl bg-card/60 hover:bg-accent text-xs font-medium text-muted-foreground hover:text-foreground transition-all cursor-pointer h-9 ${
             isCollapsed ? "w-10 justify-center px-0" : "w-full justify-between px-3"
           }`}
-          title="Toggle System Theme"
+          aria-label="Toggle System Theme" // 👈 Changed from name to accessible aria-label
         >
           {isDark ? <Sun className="w-3.5 h-3.5 shrink-0" /> : <Moon className="w-3.5 h-3.5 shrink-0" />}
           {!isCollapsed && <span className="truncate">{isDark ? "Light" : "Dark"}</span>}
         </button>
 
-        <div className={`flex items-center justify-between gap-2 overflow-hidden ${isCollapsed ? "flex-col w-full pt-1" : "px-2 pt-1"}`}>
-          <div className="flex items-center gap-2.5 min-w-0">
+        {/* 🛠️ FIRED FIX FOR FLEXBOX ALIGNMENT IN DISCONNECT DOCK STATE */}
+        <div className={`flex items-center justify-between gap-2 overflow-hidden w-full ${isCollapsed ? "flex-col items-center pt-1" : "px-2 pt-1"}`}>
+          <div className={`flex items-center gap-2.5 min-w-0 ${isCollapsed ? "flex-col justify-center text-center" : ""}`}>
             {user.image ? (
               <Image
                 src={user.image}
@@ -219,7 +219,7 @@ export const Sidebar = ({ user, recents }: SidebarProps) => {
                 className="rounded-full border border-border/80 shrink-0"
               />
             ) : (
-              <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold border border-primary/20 shrink-0">
+              <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold border border-primary/20 shrink-0 select-none">
                 {user.name?.charAt(0) || "D"}
               </div>
             )}
@@ -234,7 +234,7 @@ export const Sidebar = ({ user, recents }: SidebarProps) => {
           <Link 
             href="/api/auth/signout"
             className={`text-muted-foreground hover:text-destructive rounded-lg hover:bg-destructive/10 transition-colors shrink-0 ${
-              isCollapsed ? "p-1 mt-2" : "p-2"
+              isCollapsed ? "p-1.5 mt-1" : "p-2"
             }`}
             title="Sign Out"
           >

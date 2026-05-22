@@ -16,7 +16,7 @@ export default async function DashboardRootLayout({
 
   const recentPlaygrounds = await prisma.playground.findMany({
     where: { userId: session.user.id },
-    select: { id: true, name: true },
+    select: { id: true, title: true },
     orderBy: { updatedAt: "desc" },
     take: 7,
   });
