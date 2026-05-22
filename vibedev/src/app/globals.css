@@ -61,6 +61,8 @@
   --shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
   --tracking-normal: 0em;
   --spacing: 0.25rem;
+  --grid-major-opacity: 0.45;
+  --grid-minor-opacity: 0.15;
 }
 
 .dark {
@@ -114,6 +116,8 @@
   --shadow-lg: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 4px 6px -1px hsl(0 0% 0% / 0.18);
   --shadow-xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 8px 10px -1px hsl(0 0% 0% / 0.18);
   --shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
+  --grid-major-opacity: 0.25;
+  --grid-minor-opacity: 0.08;
 }
 
 @theme inline {
@@ -194,16 +198,20 @@
 
 /* Premium grid layer utilizing your theme's native border color variables */
 .bg-grid-pattern {
+  background-size: 40px 40px, 10px 10px;
   background-image: 
+    /* 1. Major Structural Accent Grid Lines */
     linear-gradient(to right, var(--border) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px),
+    /* 2. Micro-Precision Engineering Ticks */
+    linear-gradient(to right, var(--border) 0.5px, transparent 0.5px),
+    linear-gradient(to bottom, var(--border) 0.5px, transparent 0.5px);
 }
 
 /* Linear fade mask to smoothly dissolve the grid toward the bottom edges */
 .mask-radial-fade {
-  mask-image: radial-gradient(circle at 50% 30%, black 40%, transparent 85%);
-  -webkit-mask-image: radial-gradient(circle at 50% 30%, black 40%, transparent 85%);
+  mask-image: radial-gradient(circle at 50% 0%, black 60%, transparent 95%);
+  -webkit-mask-image: radial-gradient(circle at 50% 0%, black 60%, transparent 95%);
 }
 
 /* Ultra-premium subtle glow animation for headers */
