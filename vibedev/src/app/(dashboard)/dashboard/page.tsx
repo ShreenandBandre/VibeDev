@@ -51,7 +51,7 @@ export default async function DashboardPage() {
             {playgrounds.map((project) => (
               <Link
                 key={project.id}
-                href={`/dashboard/${project.id}`}
+                href={`/playground/${project.id}`}
                 className="group relative border border-border/80 bg-card/40 dark:bg-card/20 backdrop-blur-md rounded-2xl p-6 shadow-xs hover:border-primary/40 hover:bg-card/80 dark:hover:bg-card/40 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 flex flex-col justify-between overflow-hidden cursor-pointer"
               >
                 {/* Micro-Interaction Background Hover Gradient */}

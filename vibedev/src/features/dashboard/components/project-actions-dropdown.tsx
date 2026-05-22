@@ -43,7 +43,7 @@ export const ProjectActionsDropdown = ({ playgroundId, currentTitle, currentDesc
 
   const handleCopyLink = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    const sandboxAbsoluteUrl = `${window.location.origin}/dashboard/${playgroundId}`;
+    const sandboxAbsoluteUrl = `${window.location.origin}/playground/${playgroundId}`;
     navigator.clipboard.writeText(sandboxAbsoluteUrl);
     setIsCopied(true);
     setTimeout(() => { setIsCopied(false); setIsOpen(false); }, 1400);
