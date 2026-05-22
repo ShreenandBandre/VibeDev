@@ -30,6 +30,7 @@ model User {
   
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  playgrounds   Playground[]
 }
 
 model Account {
@@ -66,4 +67,28 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+enum ProjectTemplate {
+  REACT
+  NEXTJS
+  EXPRESS
+  HONO
+}
+
+model Playground {
+  id          String          @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String          @db.ObjectId
+  name        String
+  description String?
+  template    ProjectTemplate @default(REACT)
+  
+  // Storing the file system structure as a raw JSON tree natively in MongoDB
+  fileSystem  Json?           
+  isStarred   Boolean         @default(false)
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
