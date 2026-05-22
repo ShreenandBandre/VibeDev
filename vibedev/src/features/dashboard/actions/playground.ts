@@ -4,32 +4,40 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
-import { Templates } from "@prisma/client"; // 👈 Pulls updated Enum values
+import { Templates } from "@prisma/client"; 
+import { getStarterTemplateSnapshot } from "@/lib/starter-scanner";
 
 export const createPlaygroundAction = async (data: {
-  title: string; 
-  description?: string;
+  title: string;
+  description: string;
   template: Templates;
 }) => {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return { error: "Unauthorized user tracking profile." };
+      return { error: "Unauthorized user session context data matching profile handles." };
     }
 
-    // Create playground and child templateFiles atomically in one transaction
+    // 1. Compute consecutive workspace serial index tags
+    const baselineCount = await prisma.playground.count({
+      where: { userId: session.user.id }
+    });
+    const serialSuffix = String(baselineCount + 1).padStart(3, "0");
+    const localizedSerialTitle = `[#VIBE-${serialSuffix}] ${data.title.trim()}`;
+
+    // 🚀 2. DYNAMIC DISK LOOKUP SYSTEM: Crawls your starters-main/[template] structure on-the-fly!
+    const dynamicStarterCodeManifest = getStarterTemplateSnapshot(data.template);
+
+    // 3. Atomically seed both the playground cluster log and the filled files blueprint into MongoDB Atlas
     const newPlayground = await prisma.playground.create({
       data: {
-        title: data.title,
-        description: data.description,
+        title: localizedSerialTitle,
+        description: data.description || `Custom ${data.template} architecture workspace profile container loop.`,
         template: data.template,
         userId: session.user.id,
         templateFiles: {
           create: {
-            content: {
-              "index.html": "<h1>Welcome to the Next-Gen VibeDev Canvas!</h1>",
-              "styles.css": "body { background: #000; color: #fff; }"
-            }
+            content: dynamicStarterCodeManifest // 👈 Populating fully structured JSON directly from disk!
           }
         }
       },
