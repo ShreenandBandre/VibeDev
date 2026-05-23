@@ -1,14 +1,16 @@
+// src/app/layout.tsx
 import type { Metadata } from "next";
-import { Poppins, Lora, Inconsolata } from "next/font/google";
+import { Plus_Jakarta_Sans, Lora, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import {SessionProvider} from "next-auth/react";
+import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
 import { ThemeProvider } from "@/components/theme-provider";
 
-const fontSans = Poppins({
+// 📐 PREMIUM HIGH-LEGIBILITY INTERFACE TYPOGRAPHY (UPSCALE SIZES)
+const fontSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-sans",
-  weight: ["100","200","300" , "400" , "500" , "600" , "700" , "800" , "900"],
+  weight: ["300", "400", "500", "600", "700", "800"],
 });
 
 const fontSerif = Lora({
@@ -16,9 +18,11 @@ const fontSerif = Lora({
   variable: "--font-serif",
 });
 
-const fontMono = Inconsolata({
+// 💻 ELITE MONOSPACE COMPILATION TRACK TYPOGRAPHY
+const fontMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+  weight: ["400", "500", "700"],
 });
 
 export const metadata: Metadata = {
@@ -31,17 +35,26 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth()
+  const session = await auth();
+
   return (
-    <SessionProvider session={ session }>
-      <ThemeProvider>
     <html
       lang="en"
-      className={`${fontSans.variable} ${fontMono.variable} h-full antialiased`}
+      className={`${fontSans.variable} ${fontMono.variable} ${fontSerif.variable} h-full antialiased`}
+      suppressHydrationWarning // 💎 FIXED: Now passed cleanly as a native Boolean attribute flag!
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        <SessionProvider session={session}>
+          <ThemeProvider 
+            attribute="class" 
+            defaultTheme="dark" 
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+          </ThemeProvider>
+        </SessionProvider>
+      </body>
     </html>
-    </ThemeProvider>
-    </SessionProvider>
   );
 }

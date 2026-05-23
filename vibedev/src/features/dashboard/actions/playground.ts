@@ -15,7 +15,7 @@ export const createPlaygroundAction = async (data: {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return { error: "Unauthorized user session context data matching profile handles." };
+      return { error: "Unauthorized user session context data." };
     }
 
     // 1. Compute consecutive workspace serial index tags
@@ -25,20 +25,32 @@ export const createPlaygroundAction = async (data: {
     const serialSuffix = String(baselineCount + 1).padStart(3, "0");
     const localizedSerialTitle = `[#VIBE-${serialSuffix}] ${data.title.trim()}`;
 
-    // 🚀 2. DYNAMIC DISK LOOKUP SYSTEM: Crawls your starters-main/[template] structure on-the-fly!
-    const dynamicStarterCodeManifest = getStarterTemplateSnapshot(data.template);
+    // 2. Scan your local starters-main project framework assets folder mapping from disk
+    const flatFilesManifest = getStarterTemplateSnapshot(data.template);
 
-    // 3. Atomically seed both the playground cluster log and the filled files blueprint into MongoDB Atlas
+    // 🚀 3. TRANSFORMATION ENGINE: Convert flat string paths to your new structured TemplateFile array records
+    const structuredFilesPayload = Object.entries(flatFilesManifest).map(([filePath, bodyCode]) => {
+      const pathSegments = filePath.split("/");
+      const name = pathSegments[pathSegments.length - 1] || filePath;
+      
+      return {
+        name: name,
+        path: filePath,
+        content: bodyCode,
+        isFolder: false, // The baseline scanner processes raw file content tokens
+        parentId: null   // We'll calculate folder hierarchy links dynamically inside the Zustand tree builder
+      };
+    });
+
+    // 4. Atomically commit both structures directly onto MongoDB Atlas collections
     const newPlayground = await prisma.playground.create({
       data: {
         title: localizedSerialTitle,
-        description: data.description || `Custom ${data.template} architecture workspace profile container loop.`,
+        description: data.description || `Custom ${data.template} architecture workspace profile.`,
         template: data.template,
         userId: session.user.id,
         templateFiles: {
-          create: {
-            content: dynamicStarterCodeManifest // 👈 Populating fully structured JSON directly from disk!
-          }
+          create: structuredFilesPayload // 👈 FIXED: Correct parameters are mapped cleanly!
         }
       },
     });
@@ -50,7 +62,6 @@ export const createPlaygroundAction = async (data: {
     return { error: "Failed to generate persistent playground sandbox environment." };
   }
 };
-
 
 export const getUserPlaygroundsAction = async () => {
   try {

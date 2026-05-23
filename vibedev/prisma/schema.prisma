@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,6 +9,10 @@ datasource db {
   provider = "mongodb"
   url      = env("DATABASE_URL")
 }
+
+// ==========================================
+// USER & SYSTEM AUTHENTICATION MODELS
+// ==========================================
 
 enum UserRole {
   ADMIN
@@ -24,9 +25,8 @@ model User {
   name         String?
   email        String        @unique
   image        String?
-  accounts     Account[]
   role         UserRole      @default(USER)
-
+  accounts     Account[]
   playgrounds  Playground[]  
   myPlayground StarMark[]
   chatMessages ChatMessage[] 
@@ -41,19 +41,23 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token      String? @map("refresh_token")
-  access_token       String? @map("access_token")
-  expires_at         Int?    @map("expires_at")
-  token_type         String? @map("token_type")
+  refresh_token     String? @map("refresh_token")
+  access_token      String? @map("access_token")
+  expires_at        Int?    @map("expires_at")
+  token_type        String? @map("token_type")
   scope             String?
-  id_token           String? @map("id_token")
-  session_state      String? @map("session_state")
+  id_token          String? @map("id_token")
+  session_state     String? @map("session_state")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@index([userId])
 }
+
+// ==========================================
+// CORE WORKSPACE ENGINE & FILE STRUCTURE
+// ==========================================
 
 enum Templates {
   REACT
@@ -69,12 +73,38 @@ model Playground {
   title         String
   description   String?
   template      Templates      @default(REACT)
+  userId        String         @map("user_id")
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Changed to an array to handle discrete atom files safely
   templateFiles TemplateFile[]
+  Starmark      StarMark[]
+  
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  Starmark      StarMark[]
-  userId        String
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TemplateFile {
+  id           String     @id @default(cuid()) @map("_id")
+  playgroundId String     @map("playground_id")
+  playground   Playground @relation(fields: [playgroundId], references: [id], onDelete: Cascade)
+  
+  // 💎 FIXED: Normalized Secure Metadata Properties for Zustand Tree-Building
+  name         String     // e.g. "App.tsx" or "components"
+  path         String     // e.g. "src/App.tsx" or "src/components"
+  content      String     @default("")
+  isFolder     Boolean    @default(false)
+  
+  // Self-relation fields tracking parent-child folder states
+  parentId     String?    @map("parent_id")
+  parent       TemplateFile?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children     TemplateFile[] @relation("FolderHierarchy")
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([playgroundId])
+  @@index([parentId])
 }
 
 model StarMark {
@@ -83,26 +113,21 @@ model StarMark {
   playgroundId String
   isMarked     Boolean
   createdAt    DateTime   @default(now())
+  
   user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   playground   Playground @relation(fields: [playgroundId], references: [id], onDelete: Cascade)
 
   @@unique([userId, playgroundId])
 }
 
-model TemplateFile {
-  id           String     @id @default(cuid()) @map("_id")
-  content      Json
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  playgroundId String     @unique
-  playground   Playground @relation(fields: [playgroundId], references: [id], onDelete: Cascade)
-}
+// ==========================================
+// AI CORE FEATURES UTILITY CHANNELS
+// ==========================================
 
-// New model for AI chat messages
 model ChatMessage {
   id        String   @id @default(cuid()) @map("_id")
   userId    String
-  role      String // "user" or "assistant"
+  role      String   // "user" or "assistant"
   content   String
   createdAt DateTime @default(now())
 
