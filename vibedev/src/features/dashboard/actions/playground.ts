@@ -28,7 +28,7 @@ export const createPlaygroundAction = async (data: {
     // 2. Scan your local starters-main project framework assets folder mapping from disk
     const flatFilesManifest = getStarterTemplateSnapshot(data.template);
 
-    // 🚀 3. TRANSFORMATION ENGINE: Convert flat string paths to your new structured TemplateFile array records
+    // 3. TRANSFORMATION ENGINE: Convert flat string paths to your new structured TemplateFile array records
     const structuredFilesPayload = Object.entries(flatFilesManifest).map(([filePath, bodyCode]) => {
       const pathSegments = filePath.split("/");
       const name = pathSegments[pathSegments.length - 1] || filePath;
@@ -36,7 +36,7 @@ export const createPlaygroundAction = async (data: {
       return {
         name: name,
         path: filePath,
-        content: bodyCode,
+        content: bodyCode as string,
         isFolder: false, // The baseline scanner processes raw file content tokens
         parentId: null   // We'll calculate folder hierarchy links dynamically inside the Zustand tree builder
       };
@@ -50,7 +50,7 @@ export const createPlaygroundAction = async (data: {
         template: data.template,
         userId: session.user.id,
         templateFiles: {
-          create: structuredFilesPayload // 👈 FIXED: Correct parameters are mapped cleanly!
+          create: structuredFilesPayload
         }
       },
     });
@@ -110,18 +110,42 @@ export const deletePlaygroundAction = async (playgroundId: string) => {
     const session = await auth();
     if (!session?.user?.id) return { error: "Unauthorized session tracking profile." };
 
-    await prisma.playground.delete({
-      where: { id: playgroundId, userId: session.user.id }
+    // 🔒 HARDENED PROGRAMMATIC CASCADE DELETION SYSTEM
+    // Runs an explicit multi-stage delete flow to wipe all files from MongoDB collections first,
+    // providing a fail-safe fallback alongside the database schema relation rules.
+    await prisma.$transaction(async (tx) => {
+      // 1. Double check ownership constraints to protect active tracks
+      const targetedWorkspace = await tx.playground.findFirst({
+        where: { id: playgroundId, userId: session.user.id }
+      });
+
+      if (!targetedWorkspace) {
+        throw new Error("Target project not found or ownership context mismatch.");
+      }
+
+      // 2. Clear out all template files belonging to this layout playground first
+      await tx.templateFile.deleteMany({
+        where: { playgroundId: playgroundId }
+      });
+
+      // 3. Nuke any associated dashboard star ratings/markers
+      await tx.starMark.deleteMany({
+        where: { playgroundId: playgroundId }
+      });
+
+      // 4. Finally, nuke the master playground metadata shell node
+      await tx.playground.delete({
+        where: { id: playgroundId }
+      });
     });
 
     revalidatePath("/dashboard");
     return { success: true };
   } catch (error) {
     console.error("PLAYGROUND_DELETION_FAILURE:", error);
-    return { error: "Failed to purge database instance record tracking arrays." };
+    return { error: "Failed to cleanly drop the sandbox container project and its nested files payload." };
   }
 };
-
 
 export const duplicatePlaygroundAction = async (playgroundId: string) => {
   try {
@@ -143,6 +167,15 @@ export const duplicatePlaygroundAction = async (playgroundId: string) => {
     // Clean out previous matching regex brackets to construct a gorgeous layout text string
     const cleanRawTitle = source.title.replace(/^\[#VIBE-\d+\]\s*/, "");
 
+    // Deep copy and mirror the full file payload map array layout
+    const duplicatedFilesPayload = source.templateFiles.map((file) => ({
+      name: file.name,
+      path: file.path,
+      content: file.content || "",
+      isFolder: file.isFolder,
+      parentId: null // Reset structural hierarchy pointers for the new dashboard workspace instance context
+    }));
+
     await prisma.playground.create({
       data: {
         title: `[#VIBE-${serialSuffix}] ${cleanRawTitle} (Copy)`,
@@ -150,9 +183,7 @@ export const duplicatePlaygroundAction = async (playgroundId: string) => {
         template: source.template,
         userId: session.user.id,
         templateFiles: {
-          create: {
-            content: source.templateFiles[0]?.content || {}
-          }
+          create: duplicatedFilesPayload
         }
       }
     });
@@ -164,7 +195,6 @@ export const duplicatePlaygroundAction = async (playgroundId: string) => {
     return { error: "Failed to safely mirror the requested workspace context files." };
   }
 };
-
 
 export const updatePlaygroundMetaAction = async (playgroundId: string, data: { title: string; description: string }) => {
   try {
@@ -181,6 +211,7 @@ export const updatePlaygroundMetaAction = async (playgroundId: string, data: { t
     const prefix = serialPrefixMatch ? serialPrefixMatch[0] : "";
     const cleanNewTitle = data.title.replace(/^\[#VIBE-\d+\]\s*/, "");
 
+    // 🚀 FIXED TYPO: Left-hand assignment error resolved clean
     await prisma.playground.update({
       where: { id: playgroundId, userId: session.user.id },
       data: {

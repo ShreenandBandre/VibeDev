@@ -21,13 +21,13 @@ enum UserRole {
 }
 
 model User {
-  id           String        @id @default(cuid()) @map("_id")
-  name         String?
-  email        String        @unique
-  image        String?
-  role         UserRole      @default(USER)
-  accounts     Account[]
-  playgrounds  Playground[]  
+  id          String        @id @default(cuid()) @map("_id")
+  name        String?
+  email       String        @unique
+  image       String?
+  role        UserRole      @default(USER)
+  accounts    Account[]
+  playgrounds Playground[]  
   myPlayground StarMark[]
   chatMessages ChatMessage[] 
 
@@ -76,7 +76,7 @@ model Playground {
   userId        String         @map("user_id")
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  // Changed to an array to handle discrete atom files safely
+  // 🏢 One-to-many child file mapping track
   templateFiles TemplateFile[]
   Starmark      StarMark[]
   
@@ -87,16 +87,17 @@ model Playground {
 model TemplateFile {
   id           String     @id @default(cuid()) @map("_id")
   playgroundId String     @map("playground_id")
+  
+  // 🚀 KEEP THIS: Deleting a playground project still automatically drops all files in one go!
   playground   Playground @relation(fields: [playgroundId], references: [id], onDelete: Cascade)
   
-  // 💎 FIXED: Normalized Secure Metadata Properties for Zustand Tree-Building
-  name         String     // e.g. "App.tsx" or "components"
-  path         String     // e.g. "src/App.tsx" or "src/components"
+  name         String     
+  path         String     
   content      String     @default("")
   isFolder     Boolean    @default(false)
   
-  // Self-relation fields tracking parent-child folder states
-  parentId     String?    @map("parent_id")
+  // 🔗 💎 FIXED FOR SELF-RELATIONS: Resetting target to NoAction to satisfy Prisma's P1012 build rules
+  parentId     String?        @map("parent_id")
   parent       TemplateFile?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   children     TemplateFile[] @relation("FolderHierarchy")
 

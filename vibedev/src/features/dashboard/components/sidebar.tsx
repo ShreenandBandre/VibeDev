@@ -179,7 +179,7 @@ export const Sidebar = ({ user, recents }: SidebarProps) => {
                 recents.map((project) => (
                   <Link
                     key={project.id}
-                    href={`/dashboard/${project.id}`}
+                    href={`/playground/${project.id}`}
                     className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent/40 transition-all font-sans font-medium truncate shrink-0"
                   >
                     <FolderCode className="w-3.5 h-3.5 text-primary/70 shrink-0" />

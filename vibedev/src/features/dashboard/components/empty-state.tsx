@@ -4,21 +4,30 @@
 import { useTransition } from "react";
 import Image from "next/image";
 import { createPlaygroundAction } from "../actions/playground";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
+import { Templates } from "@prisma/client";
+import { useRouter } from "next/navigation";
 
 export const EmptyState = () => {
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const handleCreateSandbox = () => {
     if (isPending) return;
 
     startTransition(async () => {
-      const randomTag = Math.random().toString(36).substring(7).toUpperCase();
-      await createPlaygroundAction({
-        name: `Sandbox [${randomTag}]`,
+      const response = await createPlaygroundAction({
+        title: "First React Sandbox",
         description: "A secure, hot-reloading reactive execution workspace sandbox.",
-        template: "REACT",
+        template: Templates.REACT,
       });
+
+      if (response?.success && response.playgroundId) {
+        // 🚀 LIVE BOUNCE: Instantly send the user straight into their running editor instance
+        router.push(`/playground/${response.playgroundId}`);
+      } else {
+        console.error(response?.error || "Failed to initialize standard files manifest.");
+      }
     });
   };
 
@@ -54,7 +63,11 @@ export const EmptyState = () => {
         disabled={isPending}
         className="inline-flex items-center gap-2 px-5 py-3 bg-foreground text-background font-bold rounded-xl transition-all duration-200 shadow-xl hover:opacity-90 active:scale-[0.99] disabled:opacity-40 text-sm cursor-pointer"
       >
-        <Plus className={`w-4 h-4 ${isPending ? "animate-spin" : ""}`} />
+        {isPending ? (
+          <Loader2 className="w-4 h-4 animate-spin" />
+        ) : (
+          <Plus className="w-4 h-4" />
+        )}
         {isPending ? "Provisioning Sandbox..." : "Initialize First React Sandbox"}
       </button>
 

@@ -49,10 +49,10 @@ export default async function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {playgrounds.map((project) => (
-              <Link
+              /* 🚀 CHANGED FROM <Link> TO A normal <div> CONTAINER TO STOP CONFLICTS */
+              <div
                 key={project.id}
-                href={`/playground/${project.id}`}
-                className="group relative border border-border/80 bg-card/50 dark:bg-card/20 backdrop-blur-md rounded-2xl p-6 shadow-xs hover:border-primary/40 hover:bg-card/80 dark:hover:bg-card/30 hover:shadow-md hover:shadow-primary/5 transition-all duration-300 flex flex-col justify-between overflow-hidden cursor-pointer"
+                className="group relative border border-border/80 bg-card/50 dark:bg-card/20 backdrop-blur-md rounded-2xl p-6 shadow-xs hover:border-primary/40 hover:bg-card/80 dark:hover:bg-card/30 hover:shadow-md hover:shadow-primary/5 transition-all duration-300 flex flex-col justify-between overflow-hidden"
               >
                 {/* Background Hover Gradient */}
                 <div className="absolute -inset-px bg-gradient-to-br from-primary/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
@@ -64,7 +64,8 @@ export default async function DashboardPage() {
                       {project.template}
                     </span>
                     
-                    <div className="relative z-20">
+                    {/* The menu dropdown button sits safely here outside the text link boundaries */}
+                    <div className="relative z-30">
                       <ProjectActionsDropdown 
                         playgroundId={project.id}
                         currentTitle={project.title}
@@ -73,21 +74,27 @@ export default async function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* Title Header */}
-                  <div className="flex items-start justify-between gap-2 mt-3">
-                    <h3 className="text-lg font-bold text-foreground transition-colors group-hover:text-primary line-clamp-1">
-                      {project.title}
-                    </h3>
-                    <ArrowUpRight className="w-4 h-4 text-muted-foreground/40 opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all duration-300 shrink-0 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                  </div>
+                  {/* 🚀 NEW BOUNDARY: Clicking any text below this will safely route to the project */}
+                  <Link href={`/playground/${project.id}`} className="block focus:outline-hidden">
+                    {/* Title Header */}
+                    <div className="flex items-start justify-between gap-2 mt-3">
+                      <h3 className="text-lg font-bold text-foreground transition-colors group-hover:text-primary line-clamp-1">
+                        {project.title}
+                      </h3>
+                      <ArrowUpRight className="w-4 h-4 text-muted-foreground/40 opacity-0 group-hover:opacity-100 group-hover:text-primary transition-all duration-300 shrink-0 transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                    </div>
 
-                  <p className="text-sm text-muted-foreground font-light leading-relaxed mb-6 mt-1.5 line-clamp-2">
-                    {project.description || "No customized execution environment profile description metadata was provided."}
-                  </p>
+                    <p className="text-sm text-muted-foreground font-light leading-relaxed mb-6 mt-1.5 line-clamp-2">
+                      {project.description || "No customized execution environment profile description metadata was provided."}
+                    </p>
+                  </Link>
                 </div>
                 
                 {/* Lower Meta Footnotes */}
-                <div className="relative z-10 text-xs font-mono text-muted-foreground/60 border-t border-border/40 pt-4 mt-auto flex items-center justify-between w-full">
+                <Link 
+                  href={`/playground/${project.id}`}
+                  className="relative z-10 text-xs font-mono text-muted-foreground/60 border-t border-border/40 pt-4 mt-auto flex items-center justify-between w-full focus:outline-hidden"
+                >
                   <span className="flex items-center gap-1.5 font-medium">
                     <FolderCode className="w-4 h-4 text-muted-foreground/70" />
                     ID: <span className="text-foreground/80">{project.id.slice(-6).toUpperCase()}</span>
@@ -96,8 +103,9 @@ export default async function DashboardPage() {
                     <Clock className="w-3.5 h-3.5" />
                     {new Date(project.createdAt).toLocaleDateString()}
                   </span>
-                </div>
-              </Link>
+                </Link>
+
+              </div>
             ))}
           </div>
         )}
