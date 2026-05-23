@@ -18,7 +18,11 @@ interface IDEState {
   dirtyFileIds: string[];
   searchQuery: string;
   isSaving: boolean;
-  themeMode: "dark" | "light"; // 🚀 Added state token
+  themeMode: "dark" | "light";
+  
+  // 🚀 AUTOSAVE & COORDINATE STATS UPDATES
+  cursorLine: number;
+  cursorColumn: number;
   
   // CORE DISPATCH ACTIONS
   initializeWorkspace: (initialFiles: IDEFile[]) => void;
@@ -30,8 +34,11 @@ interface IDEState {
   renameItem: (id: string, newName: string) => void;
   deleteItem: (id: string) => void;
   syncWithCloudAtlas: (playgroundId: string) => Promise<void>;
-  toggleThemeMode: () => void; // 🚀 Added theme action toggle
-  initializeTheme: () => void;  // 🚀 Added system theme listener
+  toggleThemeMode: () => void;
+  initializeTheme: () => void;
+  
+  // 🚀 ACTION DISPATCHERS FOR STATUS BAR
+  setCursorPosition: (line: number, column: number) => void;
 }
 
 export const useIDEStore = create<IDEState>((set, get) => ({
@@ -42,6 +49,10 @@ export const useIDEStore = create<IDEState>((set, get) => ({
   searchQuery: "",
   isSaving: false,
   themeMode: "dark",
+  
+  // 🚀 Initial states
+  cursorLine: 1,
+  cursorColumn: 1,
 
   initializeTheme: () => {
     if (typeof window === "undefined") return;
@@ -58,6 +69,8 @@ export const useIDEStore = create<IDEState>((set, get) => ({
     return { themeMode: nextMode };
   }),
 
+  setCursorPosition: (line, column) => set({ cursorLine: line, cursorColumn: column }),
+
   initializeWorkspace: (initialFiles) => {
     const fileMap: Record<string, IDEFile> = {};
     initialFiles.forEach(f => { fileMap[f.id] = f; });
@@ -68,7 +81,9 @@ export const useIDEStore = create<IDEState>((set, get) => ({
       activeFileId: coreFirstFile ? coreFirstFile.id : null,
       openTabs: coreFirstFile ? [coreFirstFile.id] : [],
       dirtyFileIds: [],
-      searchQuery: ""
+      searchQuery: "",
+      cursorLine: 1,
+      cursorColumn: 1
     });
   },
 

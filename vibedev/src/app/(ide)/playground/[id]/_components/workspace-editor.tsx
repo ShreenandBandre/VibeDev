@@ -1,8 +1,7 @@
-// src/app/(ide)/playground/[id]/_components/workspace-editor.tsx
 "use client";
 
-import { useRef } from "react";
-import { X, Terminal, Keyboard } from "lucide-react";
+import React, { useRef, useState, useEffect } from "react";
+import { X, Terminal, Keyboard, Folder, ChevronRight, FileCode, Cpu, ShieldCheck } from "lucide-react";
 import { useIDEStore } from "@/lib/store/use-ide-store";
 import Editor, { Monaco } from "@monaco-editor/react";
 import { useParams } from "next/navigation";
@@ -23,17 +22,66 @@ export function WorkspaceEditor() {
     openTabs, 
     dirtyFileIds, 
     themeMode, 
+    cursorLine,
+    cursorColumn,
     setActiveFileId, 
     closeTab, 
     updateFileContent,
-    syncWithCloudAtlas
+    syncWithCloudAtlas,
+    setCursorPosition
   } = useIDEStore();
 
   const activeFileObject = activeFileId ? files[activeFileId] : null;
   const editorRef = useRef<any>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [localSavingStatus, setLocalSavingStatus] = useState<"idle" | "typing" | "saving" | "saved">("idle");
+
+  // 🚀 FEATURE 1: DEBOUNCED WEBCONTAINER VM FILESYSTEM AUTOSAVE ENGINE
+  const triggerAutosaveSequence = (updatedValue: string) => {
+    if (!activeFileId || !activeFileObject) return;
+
+    // 1. Instantly update content variables in global UI application state
+    updateFileContent(activeFileId, updatedValue);
+    setLocalSavingStatus("typing");
+
+    // 2. Clear any outstanding scheduled task timeouts
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+
+    // 3. Queue the compilation stream 500ms after user focus macro-halts
+    saveTimeoutRef.current = setTimeout(async () => {
+      setLocalSavingStatus("saving");
+      try {
+        const { getWebContainerInstance } = await import("@/features/playground/hooks/use-webcontainer");
+        const containerVM = await getWebContainerInstance();
+        
+        if (containerVM) {
+          await containerVM.fs.writeFile(activeFileObject.path, updatedValue);
+          setLocalSavingStatus("saved");
+          setTimeout(() => setLocalSavingStatus("idle"), 1200);
+        } else {
+          setLocalSavingStatus("idle");
+        }
+      } catch (fsErr) {
+        console.warn("VM Background Disk Sync Exception Intercept:", fsErr);
+        setLocalSavingStatus("idle");
+      }
+    }, 500);
+  };
+
+  // Clean up any remaining autosave timeouts if the view changes
+  useEffect(() => {
+    return () => {
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    };
+  }, [activeFileId]);
 
   const handleEditorDidMount = (editor: any, monaco: Monaco) => {
     editorRef.current = editor;
+
+    // 🚀 FEATURE 2: CAPTURE MONACO CURSOR LINE & COLUMN COORDINATES
+    editor.onDidChangeCursorPosition((e: any) => {
+      setCursorPosition(e.position.lineNumber, e.position.column);
+    });
 
     // 🛰️ FEATURE 3: INLINE COGNITIVE GHOST TEXT AUTO-SUGGESTION INJECTION
     monaco.languages.registerInlineCompletionsProvider('javascript', {
@@ -71,12 +119,9 @@ export function WorkspaceEditor() {
       if (currentActiveId && currentFilesMap[currentActiveId]) {
         const targetFile = currentFilesMap[currentActiveId];
 
-        // 1. Commit the live layout mutation inside your core state store structures
         updateFileContent(currentActiveId, updatedValue);
 
-        // 2. 🛰️ FLIGHT-INJECTOR: Write updated string bytes right down onto running WebContainer disk
         try {
-          // 💎 FIXED: Using pathing alias to ensure robust compiler pass completely clean!
           const { getWebContainerInstance } = await import("@/features/playground/hooks/use-webcontainer");
           const containerVM = await getWebContainerInstance();
           
@@ -88,7 +133,6 @@ export function WorkspaceEditor() {
         }
       }
 
-      // 3. Commit cloud backup transaction down to database tables
       if (playgroundId) {
         syncWithCloudAtlas(playgroundId);
       }
@@ -100,10 +144,34 @@ export function WorkspaceEditor() {
     });
   };
 
-  const handleModelChangeOverride = (newValue: string | undefined) => {
-    if (activeFileId && newValue !== undefined) {
-      updateFileContent(activeFileId, newValue);
-    }
+  // 🚀 FEATURE 4: HORIZONTAL BREADCRUMB FOLDER FLOW SCHEMATIC
+  const renderHorizontalFolderFlow = () => {
+    if (!activeFileObject) return null;
+    const pathSegments = activeFileObject.path.split("/");
+    
+    return (
+      <div className="flex items-center gap-1.5 text-xs text-zinc-400 dark:text-zinc-500 font-medium overflow-x-auto pr-4 scrollbar-none select-none">
+        <Folder className="w-3.5 h-3.5 text-primary/70 shrink-0" />
+        <span className="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors cursor-pointer">root</span>
+        
+        {pathSegments.map((segment, index) => {
+          const isLast = index === pathSegments.length - 1;
+          return (
+            <React.Fragment key={index}>
+              <ChevronRight className="w-3 h-3 text-zinc-300 dark:text-zinc-700 shrink-0" />
+              {isLast ? (
+                <div className="flex items-center gap-1 text-zinc-800 dark:text-zinc-200 font-semibold bg-zinc-200/50 dark:bg-neutral-900 border border-zinc-300/40 dark:border-neutral-800/80 px-2 py-0.5 rounded-md shadow-3xs">
+                  <FileCode className="w-3 h-3 text-primary" />
+                  <span className="truncate max-w-[120px]">{segment}</span>
+                </div>
+              ) : (
+                <span className="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors cursor-pointer truncate max-w-[100px]">{segment}</span>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -157,6 +225,21 @@ export function WorkspaceEditor() {
         {openTabs.length === 0 && <span className="text-xs font-mono pl-3 text-zinc-400/60 dark:text-zinc-600/40 italic select-none">// Canvas Staging Matrix Empty</span>}
       </div>
 
+      {/* 🧭 PATH FLOW SUB-STRIP */}
+      {activeFileId && activeFileObject && (
+        <div className="h-8 w-full border-b border-zinc-200/60 dark:border-neutral-900 bg-zinc-100/40 dark:bg-neutral-950/40 flex items-center justify-between px-4 shrink-0">
+          {renderHorizontalFolderFlow()}
+          
+          <div className="text-[10px] font-mono uppercase tracking-widest flex items-center gap-1.5 text-zinc-400 dark:text-zinc-600 font-bold">
+            {localSavingStatus === "typing" && <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />}
+            {localSavingStatus === "saving" && <span className="h-1.5 w-1.5 rounded-full bg-primary animate-ping" />}
+            {localSavingStatus === "saved" && <span className="text-emerald-500 font-extrabold font-sans">✓ Disk Synced</span>}
+            {localSavingStatus === "idle" && <span className="opacity-40">Ready</span>}
+            {localSavingStatus !== "saved" && localSavingStatus}
+          </div>
+        </div>
+      )}
+
       {/* CORE INTEL_COMPILATION COCKPIT CONTAINER */}
       <div className="flex-1 w-full flex flex-col min-h-0 overflow-hidden box-border">
         {activeFileId && activeFileObject ? (
@@ -167,7 +250,7 @@ export function WorkspaceEditor() {
             path={activeFileObject.path} 
             language={getEditorLanguageByExtension(activeFileObject.name)}
             value={activeFileObject.content || ""}
-            onChange={handleModelChangeOverride}
+            onChange={(val) => triggerAutosaveSequence(val || "")}
             beforeMount={handleEditorWillMount}
             onMount={handleEditorDidMount} 
             loading={
@@ -214,6 +297,31 @@ export function WorkspaceEditor() {
           </div>
         )}
       </div>
+
+      {/* 🚀 FEATURE 5: HIGH-DENSITY COORDINATE STATUS BAR FOOTER STRIP */}
+      <div className="h-6 w-full border-t border-zinc-200 dark:border-neutral-900 bg-zinc-50 dark:bg-neutral-950 text-zinc-500 dark:text-zinc-400 font-mono text-[11px] flex items-center justify-between px-4 shrink-0 select-none z-20 box-border">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1 text-primary/80 font-bold uppercase tracking-wider text-[10px]">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+            VibeDev Live V1
+          </span>
+          {activeFileObject && (
+            <span className="text-zinc-400 dark:text-zinc-600 uppercase tracking-tight font-medium">
+              LF // Language: <span className="text-zinc-600 dark:text-zinc-300 font-bold">{activeFileObject.name.split(".").pop()}</span>
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-3 font-medium">
+          <div className="hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors">
+            Ln <span className="text-zinc-900 dark:text-zinc-100 font-bold">{cursorLine || 1}</span>, Col <span className="text-zinc-900 dark:text-zinc-100 font-bold">{cursorColumn || 1}</span>
+          </div>
+          <div className="text-zinc-300 dark:text-neutral-800 border-l border-zinc-300 dark:border-neutral-800 pl-3 uppercase text-[10px] tracking-wider font-bold">
+            UTF-8
+          </div>
+        </div>
+      </div>
+
     </div>
   );
 }

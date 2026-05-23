@@ -18,6 +18,7 @@ interface WorkspaceClientCanvasProps {
   projectTitle: string;
   projectTemplate: string;
   templateData: any; // Dynamic workspace templates
+  recentProjects?: Array<{ id: string; title: string }>; // Feeds sidebar routes natively
 }
 
 export function WorkspaceClientCanvas({ 
@@ -25,13 +26,14 @@ export function WorkspaceClientCanvas({
   serverInitialFiles, 
   projectTitle, 
   projectTemplate,
-  templateData
+  templateData,
+  recentProjects = []
 }: WorkspaceClientCanvasProps) {
   const { initializeWorkspace } = useIDEStore();
   
   // 📏 PANEL CONTROLLER LAYOUT RESIZER STATES
   const [sidebarWidth, setSidebarWidth] = useState(260);
-  const [previewWidth, setPreviewWidth] = useState(500); // Expanded width to support tab screens nicely
+  const [previewWidth, setPreviewWidth] = useState(540); 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [isPreviewCollapsed, setIsPreviewCollapsed] = useState(false);
 
@@ -117,7 +119,8 @@ export function WorkspaceClientCanvas({
 
         {/* MONACO CODE EDITOR STAGING SEGMENT CANVAS */}
         <div className="flex-1 min-w-0 h-full flex flex-col box-border relative">
-          <WorkspaceEditor />
+          {/* 🚀 FIXED: Passed down the write callback prop directly into WorkspaceEditor */}
+          <WorkspaceEditor onSaveToContainerDisk={writeFileSync} />
         </div>
 
         {/* PREVIEW CONTAINER RESIZE GUTTER TRACK */}
@@ -130,17 +133,17 @@ export function WorkspaceClientCanvas({
           </button>
         </div>
 
-        {/* 🚀 THE PREMIUM SETUP: Renders your full preview tracking dashboard directly onto the right column screen bounds */}
+        {/* THE PREMIUM HOOKUP: Renders the multi-tab preview dashboard array right inside the split viewport */}
         <div 
           style={{ width: isPreviewCollapsed ? 0 : previewWidth }}
           className="bg-[#030303] overflow-hidden min-h-0 relative flex flex-col z-10 shrink-0 box-border border-l border-zinc-200 dark:border-zinc-900"
         >
           <WebContainerPreview 
             templateData={templateData}
-            instance={instance}
+            instance={instance} 
             isLoading={isLoading}
             error={error}
-            serverUrl={serverUrl}
+            serverUrl={serverUrl} 
             writeFileSync={writeFileSync}
           />
         </div>

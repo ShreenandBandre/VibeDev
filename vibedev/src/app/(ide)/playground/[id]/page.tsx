@@ -10,12 +10,13 @@ interface PlaygroundPageProps {
 
 export default async function PlaygroundWorkspacePage({ params }: PlaygroundPageProps) {
   const session = await auth();
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect("/auth/sign-in");
   }
 
   const resolvedParams = await params;
 
+  // 1. Fetch current sandbox data while eagerly loading all related database template files
   const sandbox = await prisma.playground.findUnique({
     where: { id: resolvedParams.id, userId: session.user.id },
     include: { templateFiles: true }
@@ -25,7 +26,15 @@ export default async function PlaygroundWorkspacePage({ params }: PlaygroundPage
     notFound();
   }
 
-  // 1. Format file index array flatly for Monaco's state tree management tab stores
+  // 🚀 2. EAGER LOAD RECENTS: Fetches the top 5 most recent sandboxes to fuel your sidebar shortcuts
+  const recentPlaygrounds = await prisma.playground.findMany({
+    where: { userId: session.user.id },
+    select: { id: true, title: true },
+    orderBy: { createdAt: "desc" },
+    take: 5
+  });
+
+  // 3. Format file index array flatly for Monaco's state tree management tab stores
   const formattedInitialFiles = sandbox.templateFiles.map(file => ({
     id: file.id,
     name: file.name,
@@ -35,7 +44,7 @@ export default async function PlaygroundWorkspacePage({ params }: PlaygroundPage
     parentId: file.parentId
   }));
 
-  // 2. Map flat array schema directly to stream paths into the new flat path-splitting transformer
+  // 4. Map flat array schema directly to stream paths into the flat path-splitting transformer
   const rawTemplateItems = sandbox.templateFiles.map(file => ({
     filename: file.name,
     fileExtension: file.name.split('.').pop() || "",
@@ -57,7 +66,8 @@ export default async function PlaygroundWorkspacePage({ params }: PlaygroundPage
         serverInitialFiles={formattedInitialFiles} 
         projectTitle={sandbox.title}
         projectTemplate={sandbox.template}
-        templateData={templateData} // 🚀 Passed down to drive the step automation cleanly
+        templateData={templateData} // 🚀 Passed down to drive step automation cleanly
+        recentProjects={recentPlaygrounds} // 🚀 Feeds multi-tab layout shortcuts
       />
     </div>
   );
