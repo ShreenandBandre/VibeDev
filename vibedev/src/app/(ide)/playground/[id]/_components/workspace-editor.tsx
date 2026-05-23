@@ -1,51 +1,169 @@
 // src/app/(ide)/playground/[id]/_components/workspace-editor.tsx
 "use client";
 
-import { X } from "lucide-react";
+import { useRef } from "react";
+import { X, Terminal, Keyboard } from "lucide-react";
 import { useIDEStore } from "@/lib/store/use-ide-store";
+import Editor, { Monaco } from "@monaco-editor/react";
+import { useParams } from "next/navigation";
+
+import { 
+  getEditorLanguageByExtension, 
+  defaultMonacoOptions, 
+  handleEditorWillMount 
+} from "@/lib/config-monaco";
 
 export function WorkspaceEditor() {
-  const { files, activeFileId, openTabs, setActiveFileId, closeTab, updateFileContent } = useIDEStore();
+  const params = useParams();
+  const playgroundId = params?.id as string;
+
+  const { 
+    files, 
+    activeFileId, 
+    openTabs, 
+    dirtyFileIds, 
+    themeMode, 
+    setActiveFileId, 
+    closeTab, 
+    updateFileContent,
+    syncWithCloudAtlas
+  } = useIDEStore();
+
   const activeFileObject = activeFileId ? files[activeFileId] : null;
+  const editorRef = useRef<any>(null);
+
+  // 🚀 MONACO IN-FLIGHT MOUNT REGISTRATION HOOK
+  const handleEditorDidMount = (editor: any, monaco: Monaco) => {
+    editorRef.current = editor;
+
+    // 🎹 FEATURE 1: CUSTOM SHORTCUTS MATRIX (Ctrl + S / Cmd + S Hook)
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+      if (playgroundId) {
+        syncWithCloudAtlas(playgroundId);
+      }
+    });
+
+    // Quick Close Tab Hotkey (Ctrl + W or Alt + W override fallback mapping)
+    editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.KeyW, () => {
+      const currentActiveId = useIDEStore.getState().activeFileId;
+      if (currentActiveId) closeTab(currentActiveId);
+    });
+  };
+
+  // 🧠 FEATURE 2: MULTI-MODEL TAB STORAGE SYNC CONTROL
+  const handleModelChangeOverride = (newValue: string | undefined) => {
+    if (activeFileId && newValue !== undefined) {
+      updateFileContent(activeFileId, newValue);
+    }
+  };
 
   return (
-    <div className="flex-1 border-r border-border/60 bg-zinc-950/5 dark:bg-zinc-950/20 relative overflow-hidden min-h-0 flex flex-col p-2">
-      <div className="h-10 w-full flex border-b border-border/40 bg-zinc-900/20 overflow-x-auto select-none shrink-0 scrollbar-none items-center">
+    <div className="flex-1 bg-white dark:bg-[#000000] flex flex-col min-h-0 relative border-r border-zinc-200 dark:border-zinc-900 box-border">
+      
+      {/* SEAMLESS TAB WRAPPER TRACK */}
+      <div className="h-10 w-full flex border-b border-zinc-200 dark:border-zinc-900 bg-zinc-50 dark:bg-[#050506] overflow-x-auto select-none shrink-0 scrollbar-none items-center box-border">
         {openTabs.map((tabId) => {
           const fileObj = files[tabId];
           if (!fileObj) return null;
+          
           const isCurrent = tabId === activeFileId;
+          const isDirty = dirtyFileIds.includes(tabId);
+
           return (
             <div
               key={tabId}
               onClick={() => setActiveFileId(tabId)}
-              className={`h-full px-4 text-xs font-mono flex items-center gap-2.5 border-r border-border/30 cursor-pointer transition-all shrink-0 ${isCurrent ? "bg-background/80 dark:bg-zinc-950/60 text-foreground font-bold border-t-2 border-t-primary" : "text-zinc-400 hover:bg-zinc-900/40 hover:text-foreground"}`}
+              className={`group/tab h-full px-4 text-xs font-mono flex items-center gap-3 border-r border-zinc-200 dark:border-zinc-900/40 cursor-pointer transition-all shrink-0 relative box-border
+                ${isCurrent 
+                  ? "bg-white dark:bg-[#000000] text-zinc-900 dark:text-foreground font-bold border-t-2 border-t-primary" 
+                  : "text-zinc-400 hover:bg-zinc-200/40 dark:hover:bg-zinc-900/40 hover:text-zinc-900 dark:hover:text-foreground"
+                }
+              `}
             >
-              <span className="truncate max-w-[140px]">{fileObj.name}</span>
-              <button 
-                onClick={(e) => { e.stopPropagation(); closeTab(tabId); }}
-                className="p-0.5 rounded hover:bg-accent/80 text-zinc-400 hover:text-destructive transition-colors cursor-pointer"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
+              <span className="truncate max-w-[120px] text-[13px]">{fileObj.name}</span>
+              
+              <div className="w-3.5 h-3.5 flex items-center justify-center relative">
+                {isDirty ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-amber-500 scale-100 opacity-100 transition-all duration-150 group-hover/tab:scale-0 group-hover/tab:opacity-0" />
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); closeTab(tabId); }}
+                      className="p-0.5 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-400 hover:text-destructive absolute inset-0 opacity-0 group-hover/tab:opacity-100 scale-0 group-hover/tab:scale-100 transition-all duration-150 cursor-pointer flex items-center justify-center"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); closeTab(tabId); }}
+                    className="p-0.5 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-400 hover:text-destructive opacity-0 group-hover/tab:opacity-100 transition-opacity duration-150 cursor-pointer flex items-center justify-center"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}
-        {openTabs.length === 0 && <span className="text-xs font-mono pl-3 text-zinc-600">// Staging editor canvas empty</span>}
+        {openTabs.length === 0 && <span className="text-xs font-mono pl-3 text-zinc-400/60 dark:text-zinc-600/40 italic select-none">// Canvas Staging Matrix Empty</span>}
       </div>
 
-      <div className="flex-1 w-full bg-transparent flex flex-col min-h-0 mt-2">
+      {/* CORE INTEL_COMPILATION COCKPIT CANVAS CONTAINER */}
+      <div className="flex-1 w-full flex flex-col min-h-0 overflow-hidden box-border">
         {activeFileId && activeFileObject ? (
-          <textarea
+          <Editor
+            height="100%"
+            width="100%"
+            theme={themeMode === "dark" ? "vibedev-midnight" : "vibedev-clean-light"}
+            
+            // 🧠 MODEL LINKING RULES: Passing name as path forces Monaco to reuse background models cleanly, preserving undo histories!
+            path={activeFileObject.name} 
+            language={getEditorLanguageByExtension(activeFileObject.name)}
             value={activeFileObject.content || ""}
-            onChange={(e) => updateFileContent(activeFileId, e.target.value)}
-            style={{ fontFamily: "var(--font-mono)" }}
-            className="flex-1 w-full p-5 bg-transparent font-medium text-sm text-foreground placeholder:text-zinc-700 resize-none focus:outline-none leading-relaxed border-0 custom-scrollbar"
-            spellCheck={false}
+            onChange={handleModelChangeOverride}
+            beforeMount={handleEditorWillMount}
+            onMount={handleEditorDidMount} // 🚀 Binds active hotkey listeners directly into the mount phase
+            loading={
+              <div className="flex-1 h-full flex items-center justify-center font-mono text-xs text-zinc-400 dark:text-zinc-500 bg-zinc-50 dark:bg-black/40 animate-pulse">
+                // Synchronizing multi-model codespace memory slots...
+              </div>
+            }
+            options={defaultMonacoOptions}
           />
         ) : (
-          <div className="flex-1 flex items-center justify-center text-sm font-mono text-zinc-600">
-            Select an engineering token from the workspace tree to open.
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 select-none animate-fade-in bg-zinc-50 dark:bg-transparent">
+            <div className="relative mb-6 group">
+              <div className="absolute inset-0 bg-primary/20 rounded-2xl blur-xl group-hover:bg-primary/30 transition-all duration-500" />
+              <div className="w-16 h-16 rounded-2xl border border-zinc-200 dark:border-border/80 bg-white dark:bg-zinc-950 flex items-center justify-center relative shadow-2xl transition-transform duration-300 group-hover:scale-105">
+                <Terminal className="w-8 h-8 text-primary stroke-[1.5]" />
+              </div>
+            </div>
+
+            <h2 className="text-base font-black tracking-tight text-zinc-800 dark:text-zinc-200 font-sans mb-1">
+              VibeDev Interactive Codespace
+            </h2>
+            <p className="text-xs font-mono text-zinc-400 dark:text-zinc-500 max-w-xs leading-relaxed mb-8">
+              No active compilation token selected. Open a file from the explorer matrix or trigger a new source component segment.
+            </p>
+
+            <div className="border border-zinc-200 dark:border-border/40 bg-white dark:bg-zinc-950/40 backdrop-blur-xs rounded-xl p-4 w-full max-w-xs space-y-2.5 text-left font-mono text-[11px] text-zinc-500 dark:text-zinc-400">
+              <div className="text-[10px] uppercase font-black tracking-widest text-zinc-400 dark:text-zinc-600 border-b border-zinc-200 dark:border-border/30 pb-1.5 flex items-center gap-1.5">
+                <Keyboard className="w-3 h-3" />
+                <span>Quick Actions Matrix</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-400 dark:text-zinc-500">Create New Token</span>
+                <span className="px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-border/60 rounded text-[10px] text-primary font-bold">Hover Explorer +</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-400 dark:text-zinc-500">Commit Cloud Sync</span>
+                <span className="px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-border/60 rounded text-[10px]">Ctrl + S Shortcut</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-400 dark:text-zinc-500">Global Close Tab</span>
+                <span className="px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-border/60 rounded text-[10px]">Alt + W Shortcut</span>
+              </div>
+            </div>
           </div>
         )}
       </div>

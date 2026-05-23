@@ -6,7 +6,6 @@ import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
 import { ThemeProvider } from "@/components/theme-provider";
 
-// 📐 PREMIUM HIGH-LEGIBILITY INTERFACE TYPOGRAPHY (UPSCALE SIZES)
 const fontSans = Plus_Jakarta_Sans({
   subsets: ["latin"],
   variable: "--font-sans",
@@ -18,7 +17,6 @@ const fontSerif = Lora({
   variable: "--font-serif",
 });
 
-// 💻 ELITE MONOSPACE COMPILATION TRACK TYPOGRAPHY
 const fontMono = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
@@ -40,10 +38,11 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${fontSans.variable} ${fontMono.variable} ${fontSerif.variable} h-full antialiased`}
-      suppressHydrationWarning // 💎 FIXED: Now passed cleanly as a native Boolean attribute flag!
+      className={`${fontSans.variable} ${fontMono.variable} ${fontSerif.variable} h-full antialiased m-0 p-0 overflow-hidden`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col font-sans">
+      {/* 🚀 FIXED: Added m-0 p-0 h-full w-full and dark background configurations directly to the base body block */}
+      <body className="w-full h-full m-0 p-0 flex flex-col font-sans bg-white dark:bg-black overflow-hidden box-border antialiased">
         <SessionProvider session={session}>
           <ThemeProvider 
             attribute="class" 

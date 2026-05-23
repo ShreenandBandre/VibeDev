@@ -64,34 +64,48 @@ export function WorkspaceSidebar({ playgroundId, isCollapsed }: { playgroundId: 
 
   return (
     <>
-      <div style={{ width: isCollapsed ? "0px" : "270px" }} className="border-r border-border/40 bg-zinc-950/20 dark:bg-zinc-900/10 flex flex-col min-h-0 shrink-0 select-none overflow-hidden transition-all duration-300 ease-in-out z-10">
+      {/* 🚀 FIXED: Dynamic width handling is now offloaded entirely to the parent resize handle track gutter */}
+      <div className="w-full h-full bg-zinc-50 dark:bg-zinc-950/10 flex flex-col min-h-0 select-none overflow-hidden box-border">
         {!isCollapsed && (
-          <div className="flex flex-col h-full p-4 gap-4 min-h-0 w-[270px] animate-fade-in text-sm">
+          <div className="flex flex-col h-full p-4 gap-4 min-h-0 w-full font-sans text-sm animate-fade-in box-border">
+            
+            {/* SEARCH TEXT CONTROLLER */}
             <div className="relative w-full shrink-0">
               <Search className="absolute left-3 top-3 w-4 h-4 text-zinc-500" />
-              <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search files..." className="w-full h-9 pl-9 pr-3 border border-border/50 bg-zinc-950/40 text-xs font-mono text-foreground rounded-lg focus:outline-none" />
+              <input 
+                type="text" 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)} 
+                placeholder="Search files..." 
+                className="w-full h-9 pl-9 pr-3 border border-zinc-200 dark:border-border/50 bg-white dark:bg-zinc-950/40 text-xs font-mono text-zinc-900 dark:text-foreground rounded-lg focus:outline-none" 
+              />
             </div>
 
-            <div className="text-xs font-mono uppercase tracking-widest text-zinc-500 border-b border-border/40 pb-2.5 flex items-center justify-between font-bold">
+            {/* BAR TRACK IDENTIFICATION HOUSINGS */}
+            <div className="text-xs font-mono uppercase tracking-widest text-zinc-400 dark:text-zinc-500 border-b border-zinc-200 dark:border-border/40 pb-2.5 flex items-center justify-between font-bold">
               <span>Workspace Files</span>
               <div className="flex items-center gap-1.5">
-                <button onClick={() => setCreateConfig({ isOpen: true, isFolder: false, parentPath: null })} className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-primary cursor-pointer"><FilePlus className="w-3.5 h-3.5" /></button>
-                <button onClick={() => setCreateConfig({ isOpen: true, isFolder: true, parentPath: null })} className="p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-primary cursor-pointer"><FolderPlus className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setCreateConfig({ isOpen: true, isFolder: false, parentPath: null })} className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-400 hover:text-primary cursor-pointer"><FilePlus className="w-3.5 h-3.5" /></button>
+                <button onClick={() => setCreateConfig({ isOpen: true, isFolder: true, parentPath: null })} className="p-1 rounded hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-400 hover:text-primary cursor-pointer"><FolderPlus className="w-3.5 h-3.5" /></button>
               </div>
             </div>
 
+            {/* RENDER DYNAMIC ARCHITECTURAL FILE TREE */}
             <div className="flex-1 overflow-y-auto custom-scrollbar pr-1 py-1 space-y-0.5">
               {structuredTree.length > 0 ? (
                 structuredTree.map((childNode) => (
                   <FileTreeNode
-                    key={childNode.id} node={childNode} activeFile={activeFileId || ""} onFileSelect={setActiveFileId}
+                    key={childNode.id} 
+                    node={childNode} 
+                    activeFile={activeFileId || ""} 
+                    onFileSelect={setActiveFileId}
                     onCreateRequest={(parentPath, isFolder) => setCreateConfig({ isOpen: true, isFolder, parentPath })}
                     onRenameRequest={(targetPath, name) => setRenameConfig({ isOpen: true, targetPath, name })}
                     onDeleteRequest={(targetPath, name, isFolder) => setDeleteTarget({ isOpen: true, path: targetPath, name, isFolder })}
                   />
                 ))
               ) : (
-                <p className="text-xs font-mono text-zinc-600 italic p-2">// Empty workspace.</p>
+                <p className="text-xs font-mono text-zinc-400 dark:text-zinc-600 italic p-2">// Empty workspace.</p>
               )}
             </div>
           </div>
