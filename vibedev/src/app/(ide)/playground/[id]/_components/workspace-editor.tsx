@@ -32,25 +32,74 @@ export function WorkspaceEditor() {
   const activeFileObject = activeFileId ? files[activeFileId] : null;
   const editorRef = useRef<any>(null);
 
-  // 🚀 MONACO IN-FLIGHT MOUNT REGISTRATION HOOK
   const handleEditorDidMount = (editor: any, monaco: Monaco) => {
     editorRef.current = editor;
 
-    // 🎹 FEATURE 1: CUSTOM SHORTCUTS MATRIX (Ctrl + S / Cmd + S Hook)
-    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+    // 🛰️ FEATURE 3: INLINE COGNITIVE GHOST TEXT AUTO-SUGGESTION INJECTION
+    monaco.languages.registerInlineCompletionsProvider('javascript', {
+      provideInlineCompletions: (model, position) => {
+        const textBeforeCursor = model.getValueInRange({
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column
+        });
+
+        if (textBeforeCursor.trim() === 'vibe') {
+          return {
+            items: [{
+              insertText: 'DevCodespaceEngineActive = true; // Press Tab to accept simulation token',
+              range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column)
+            }]
+          };
+        }
+        return { items: [] };
+      },
+      freeInlineCompletions: () => {}
+    });
+
+    // 🎹 SHORTCUT MATRIX: AUTOMATED FORMATTING & WEBCONTAINER FILE SYNC
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, async () => {
+      if (editorRef.current) {
+        await editorRef.current.getAction('editor.action.formatDocument').run();
+      }
+      
+      const updatedValue = editorRef.current?.getValue() || "";
+      const currentActiveId = useIDEStore.getState().activeFileId;
+      const currentFilesMap = useIDEStore.getState().files;
+
+      if (currentActiveId && currentFilesMap[currentActiveId]) {
+        const targetFile = currentFilesMap[currentActiveId];
+
+        // 1. Commit the live layout mutation inside your core state store structures
+        updateFileContent(currentActiveId, updatedValue);
+
+        // 2. 🛰️ FLIGHT-INJECTOR: Write updated string bytes right down onto running WebContainer disk
+        try {
+          // 💎 FIXED: Using pathing alias to ensure robust compiler pass completely clean!
+          const { getWebContainerInstance } = await import("@/features/playground/hooks/use-webcontainer");
+          const containerVM = await getWebContainerInstance();
+          
+          if (containerVM) {
+            await containerVM.fs.writeFile(targetFile.path, updatedValue);
+          }
+        } catch (fsErr) {
+          console.warn("VM Local Disk Flush Exception Intercept:", fsErr);
+        }
+      }
+
+      // 3. Commit cloud backup transaction down to database tables
       if (playgroundId) {
         syncWithCloudAtlas(playgroundId);
       }
     });
 
-    // Quick Close Tab Hotkey (Ctrl + W or Alt + W override fallback mapping)
     editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.KeyW, () => {
       const currentActiveId = useIDEStore.getState().activeFileId;
       if (currentActiveId) closeTab(currentActiveId);
     });
   };
 
-  // 🧠 FEATURE 2: MULTI-MODEL TAB STORAGE SYNC CONTROL
   const handleModelChangeOverride = (newValue: string | undefined) => {
     if (activeFileId && newValue !== undefined) {
       updateFileContent(activeFileId, newValue);
@@ -108,24 +157,22 @@ export function WorkspaceEditor() {
         {openTabs.length === 0 && <span className="text-xs font-mono pl-3 text-zinc-400/60 dark:text-zinc-600/40 italic select-none">// Canvas Staging Matrix Empty</span>}
       </div>
 
-      {/* CORE INTEL_COMPILATION COCKPIT CANVAS CONTAINER */}
+      {/* CORE INTEL_COMPILATION COCKPIT CONTAINER */}
       <div className="flex-1 w-full flex flex-col min-h-0 overflow-hidden box-border">
         {activeFileId && activeFileObject ? (
           <Editor
             height="100%"
             width="100%"
             theme={themeMode === "dark" ? "vibedev-midnight" : "vibedev-clean-light"}
-            
-            // 🧠 MODEL LINKING RULES: Passing name as path forces Monaco to reuse background models cleanly, preserving undo histories!
-            path={activeFileObject.name} 
+            path={activeFileObject.path} 
             language={getEditorLanguageByExtension(activeFileObject.name)}
             value={activeFileObject.content || ""}
             onChange={handleModelChangeOverride}
             beforeMount={handleEditorWillMount}
-            onMount={handleEditorDidMount} // 🚀 Binds active hotkey listeners directly into the mount phase
+            onMount={handleEditorDidMount} 
             loading={
               <div className="flex-1 h-full flex items-center justify-center font-mono text-xs text-zinc-400 dark:text-zinc-500 bg-zinc-50 dark:bg-black/40 animate-pulse">
-                // Synchronizing multi-model codespace memory slots...
+                // Synchronizing advanced codespace utilities...
               </div>
             }
             options={defaultMonacoOptions}

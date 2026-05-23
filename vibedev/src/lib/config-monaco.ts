@@ -21,7 +21,23 @@ export const defaultMonacoOptions: EditorProps["options"] = {
   fontFamily: "var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
   fontWeight: "500",
   lineHeight: 20,
-  minimap: { enabled: false },
+  
+  // 🛰️ FEATURE 1: PREMIUM HIGH-CONTRAST LENS MINIMAP
+  minimap: { 
+    enabled: true, 
+    side: "right",
+    renderCharacters: false, // 🚀 Blocks fuzzy text rendering; drops in clean geometric blocks instead
+    maxColumn: 80,
+    showSlider: "mouseover"
+  },
+  
+  // Inline ghost text placeholder support configuration logic
+  inlineSuggest: {
+    enabled: true,
+    showToolbar: "always",
+    mode: "prefix"
+  },
+
   scrollBeyondLastLine: false,
   automaticLayout: true,
   wordWrap: "on",
@@ -55,25 +71,60 @@ export const defaultMonacoOptions: EditorProps["options"] = {
 };
 
 export const handleEditorWillMount = (monaco: any) => {
-  // ⚡ ENABLE DIAGNOSTICS & COGNITIVE LINING RULES
+  // ⚡ COMPILER OPTIMIZATION CHANNELS
   monaco.languages.typescript.typescriptDefaults.setCompilerOptions({
     target: monaco.languages.typescript.ScriptTarget.ES2020,
     allowNonTsExtensions: true,
     moduleResolution: monaco.languages.typescript.ModuleResolutionKind.NodeJs,
-    module: monaco.languages.typescript.ModuleKind.CommonJS,
     noEmit: true,
     jsx: monaco.languages.typescript.JsxEmit.React,
-    jsxFactory: "React.createElement",
-    reactNamespace: "React",
     allowJs: true,
-    typeRoots: ["node_modules/@types"]
   });
 
-  // Strict structural linter evaluation setup parameters
-  monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions({
-    noSemanticValidation: false,
-    noSyntaxValidation: false, // 🚀 Surfacing instant wavy underlines for bugs!
+  // 🛰️ FEATURE 2: CUSTOM TAILORED INTELLISENSE SUGGESTION MATRIX
+  // Registers a global provider targeting Javascript/TypeScript files across your workspace
+  const createCompletionProvider = (languageId: string) => ({
+    provideCompletionItems: (model: any, position: any) => {
+      const suggestions = [
+        {
+          label: 'vibe-useFetch',
+          kind: monaco.languages.CompletionItemKind.Snippet,
+          insertText: [
+            'const { data, loading, error } = useFetch(`${1:url}`);',
+            '$0'
+          ].join('\n'),
+          documentation: 'VibeDev reactive async data fetching pipeline segment hook.',
+          range: null as any
+        },
+        {
+          label: 'vibe-component',
+          kind: monaco.languages.CompletionItemKind.Snippet,
+          insertText: [
+            'export default function ${1:Component}() {',
+            '  return (',
+            '    <div className="p-4 bg-zinc-900 text-white rounded-xl border border-zinc-800">',
+            '      <h1>${1:Component} Active Element</h1>',
+            '    </div>',
+            '  );',
+            '}'
+          ].join('\n'),
+          documentation: 'Premium architectural frontend template layout element container.',
+          range: null as any
+        },
+        {
+          label: 'vibe-serverSync',
+          kind: monaco.languages.CompletionItemKind.Function,
+          insertText: 'await syncWithCloudAtlas(playgroundId);',
+          documentation: 'Triggers atomic database commit transactions down to persistent store tables.',
+          range: null as any
+        }
+      ];
+      return { suggestions };
+    }
   });
+
+  monaco.languages.registerCompletionItemProvider('javascript', createCompletionProvider('javascript'));
+  monaco.languages.registerCompletionItemProvider('typescript', createCompletionProvider('typescript'));
 
   // 🌌 1. CUSTOM PITCH BLACK THEME
   monaco.editor.defineTheme("vibedev-midnight", {
@@ -96,6 +147,9 @@ export const handleEditorWillMount = (monaco: any) => {
       "editorLineNumber.activeForeground": "#71717a",
       "editorWidget.background": "#09090b",
       "editorWidget.border": "#18181b",
+      "editorSuggestWidget.background": "#09090b", // Auto-complete popover windows match pitch black
+      "editorSuggestWidget.border": "#1c1c1f",
+      "editorSuggestWidget.selectedBackground": "#18181b",
     },
   });
 
