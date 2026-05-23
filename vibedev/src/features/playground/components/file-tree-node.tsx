@@ -31,16 +31,12 @@ export const FileTreeNode = ({
   const [isEditing, setIsEditing] = useState(false);
   const [renameValue, setRenameValue] = useState(node.name);
 
-  // Helper utility to safely resolve clean database paths from synthetic nodes
-  const resolveCleanStorePath = () => {
-    return node.id.startsWith("folder_") ? node.relativePath : node.relativePath;
-  };
+  const resolveCleanStorePath = () => node.relativePath;
 
   const handleCommitRename = (e: React.MouseEvent) => {
     e.preventDefault(); 
     e.stopPropagation();
     if (renameValue.trim() && renameValue.trim() !== node.name) {
-      // 🚀 Passes the actual relative path string layout to Zustand's key manager
       onRename(resolveCleanStorePath(), renameValue.trim());
     }
     setIsEditing(false);
@@ -53,133 +49,105 @@ export const FileTreeNode = ({
     setIsEditing(false);
   };
 
-  // 📄 RENDER INDIVIDUAL SPECIFIC CODE FILE NODE LAYER
+  // 📄 FILE NODE RENDER (WITH CORRESPONDING TREE GUIDES)
   if (!node.isFolder) {
     const isCurrent = node.id === activeFile;
     return (
       <div 
-        className={`group relative w-full flex items-center justify-between rounded-xl pr-2 py-1.5 text-xs font-mono transition-all ${
-          isCurrent 
-            ? "bg-primary/10 text-primary border-l-2 border-primary font-bold pl-2" 
-            : "text-muted-foreground hover:text-foreground hover:bg-accent/40 pl-2.5"
-        }`}
+        className={`group relative w-full flex items-center justify-between rounded-lg pr-2 py-1 text-xs font-mono transition-all relative
+          ${isCurrent 
+            ? "bg-primary/10 text-primary font-semibold pl-2 border-l-2 border-primary" 
+            : "text-zinc-400 dark:text-zinc-400 hover:text-foreground hover:bg-zinc-800/30 dark:hover:bg-zinc-800/20 pl-3"
+          }
+          before:absolute before:left-[-11px] before:top-1/2 before:w-2.5 before:h-px before:bg-border/60 before:content-['']
+        `}
       >
         {isEditing ? (
-          <div className="flex items-center gap-1 w-full pl-4">
+          <div className="flex items-center gap-1 w-full z-10">
             <input 
               type="text" 
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
-              className="bg-background border border-primary/40 text-xs rounded-md px-1.5 py-0.5 w-full focus:outline-none font-mono h-6 text-foreground"
+              className="bg-zinc-950 border border-primary/40 text-xs rounded-md px-1.5 py-0.5 w-full focus:outline-none font-mono h-6 text-foreground"
               autoFocus
               onClick={(e) => e.stopPropagation()}
             />
-            <button onClick={handleCommitRename} className="text-emerald-500 p-0.5 hover:bg-background rounded-md cursor-pointer"><Check className="w-3.5 h-3.5" /></button>
-            <button onClick={handleCancelRename} className="text-destructive p-0.5 hover:bg-background rounded-md cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+            <button onClick={handleCommitRename} className="text-emerald-500 p-0.5 hover:bg-zinc-900 rounded-md cursor-pointer"><Check className="w-3.5 h-3.5" /></button>
+            <button onClick={handleCancelRename} className="text-destructive p-0.5 hover:bg-zinc-900 rounded-md cursor-pointer"><X className="w-3.5 h-3.5" /></button>
           </div>
         ) : (
           <button
             onClick={() => onFileSelect(node.id)}
-            className="flex-1 text-left pr-2 py-0.5 truncate flex items-center gap-2 cursor-pointer h-5"
+            className="flex-1 text-left pr-2 py-0.5 truncate flex items-center gap-2 cursor-pointer h-6 z-10"
           >
-            <FileCode className={`w-4 h-4 shrink-0 ${isCurrent ? "text-primary" : "text-muted-foreground/60"}`} />
-            <span className="truncate text-sm font-medium">{node.name}</span>
+            <FileCode className={`w-3.5 h-3.5 shrink-0 ${isCurrent ? "text-primary" : "text-zinc-500"}`} />
+            <span className="truncate text-[13px] tracking-wide">{node.name}</span>
           </button>
         )}
 
         {!isEditing && (
           <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity bg-transparent shrink-0 pl-1 z-20">
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsEditing(true); }}
-              className="p-0.5 rounded hover:bg-background text-muted-foreground hover:text-foreground cursor-pointer"
-              title="Rename File"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-            </button>
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(resolveCleanStorePath()); }}
-              className="p-0.5 rounded hover:bg-background text-muted-foreground hover:text-destructive cursor-pointer"
-              title="Delete File"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+            <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); }} className="p-1 rounded-md hover:bg-zinc-800/80 text-zinc-500 hover:text-foreground cursor-pointer"><Edit3 className="w-3 h-3" /></button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(resolveCleanStorePath()); }} className="p-1 rounded-md hover:bg-zinc-800/80 text-zinc-500 hover:text-destructive cursor-pointer"><Trash2 className="w-3 h-3" /></button>
           </div>
         )}
       </div>
     );
   }
 
-  // 📁 RENDER RECURSIVE DIRECTORY/FOLDER TREE NODE LAYER
+  // 📁 FOLDER NODE RENDER (WITH INTERACTIVE EXPANDABLE TRACK LINES)
   return (
-    <div className="space-y-0.5 w-full">
-      <div className="group relative w-full flex items-center justify-between rounded-xl pr-2 py-1.5 text-xs font-mono text-foreground/90 hover:bg-accent/40 transition-colors">
+    <div className="space-y-0.5 w-full relative">
+      <div 
+        className={`group relative w-full flex items-center justify-between rounded-lg pr-2 py-1 text-xs font-mono text-zinc-300 dark:text-zinc-200 hover:bg-zinc-800/30 dark:hover:bg-zinc-800/20 transition-colors pl-1
+          ${node.parentId ? "before:absolute before:left-[-11px] before:top-1/2 before:w-2.5 before:h-px before:bg-border/60 before:content-['']" : ""}
+        `}
+      >
         {isEditing ? (
-          <div className="flex items-center gap-1 w-full pl-4">
+          <div className="flex items-center gap-1 w-full pl-2">
             <input 
               type="text" 
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
-              className="bg-background border border-primary/40 text-xs rounded-md px-1.5 py-0.5 w-full focus:outline-none font-mono h-6 text-foreground"
+              className="bg-zinc-950 border border-primary/40 text-xs rounded-md px-1.5 py-0.5 w-full focus:outline-none font-mono h-6 text-foreground"
               autoFocus
               onClick={(e) => e.stopPropagation()}
             />
-            <button onClick={handleCommitRename} className="text-emerald-500 p-0.5 hover:bg-background rounded-md cursor-pointer"><Check className="w-3.5 h-3.5" /></button>
-            <button onClick={handleCancelRename} className="text-destructive p-0.5 hover:bg-background rounded-md cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+            <button onClick={handleCommitRename} className="text-emerald-500 p-0.5 hover:bg-zinc-900 rounded-md cursor-pointer"><Check className="w-3.5 h-3.5" /></button>
+            <button onClick={handleCancelRename} className="text-destructive p-0.5 hover:bg-zinc-900 rounded-md cursor-pointer"><X className="w-3.5 h-3.5" /></button>
           </div>
         ) : (
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="flex-1 text-left px-2 py-0.5 rounded-md transition-all flex items-center gap-2 cursor-pointer h-5 text-foreground/90 font-bold truncate"
+            className="flex-1 text-left px-1 py-0.5 rounded-md transition-all flex items-center gap-1.5 cursor-pointer h-6 font-semibold truncate text-zinc-200"
           >
-            <span className="text-muted-foreground/40 group-hover:text-muted-foreground transition-colors shrink-0">
+            <span className="text-zinc-500 hover:text-zinc-300 transition-colors shrink-0">
               {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             </span>
             {isOpen ? (
-              <FolderOpen className="w-4 h-4 text-amber-500/80 fill-amber-500/10 shrink-0" />
+              <FolderOpen className="w-4 h-4 text-amber-500/90 fill-amber-500/10 shrink-0" />
             ) : (
               <Folder className="w-4 h-4 text-amber-500/80 fill-amber-500/10 shrink-0" />
             )}
-            <span className="truncate tracking-wide text-sm">{node.name}</span>
+            <span className="truncate tracking-wide text-[13px] ml-0.5">{node.name}</span>
           </button>
         )}
 
         {!isEditing && (
-          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity bg-transparent shrink-0 pl-1 z-20">
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddFile(resolveCleanStorePath()); }}
-              className="p-0.5 rounded hover:bg-background text-muted-foreground hover:text-primary cursor-pointer"
-              title="New File inside folder"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onAddFolder(resolveCleanStorePath()); }}
-              className="p-0.5 rounded hover:bg-background text-muted-foreground hover:text-primary cursor-pointer"
-              title="New Folder inside folder"
-            >
-              <FolderPlus className="w-3.5 h-3.5" />
-            </button>
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsEditing(true); }}
-              className="p-0.5 rounded hover:bg-background text-muted-foreground hover:text-foreground cursor-pointer"
-              title="Rename Folder"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-            </button>
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDelete(resolveCleanStorePath()); }}
-              className="p-0.5 rounded hover:bg-background text-muted-foreground hover:text-destructive cursor-pointer"
-              title="Delete Folder"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-            </button>
+          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-0.5 transition-opacity bg-transparent shrink-0 pl-1 z-20">
+            <button onClick={(e) => { e.stopPropagation(); onAddFile(resolveCleanStorePath()); }} className="p-1 rounded-md hover:bg-zinc-800/80 text-zinc-500 hover:text-primary cursor-pointer" title="New File"><Plus className="w-3 h-3" /></button>
+            <button onClick={(e) => { e.stopPropagation(); onAddFolder(resolveCleanStorePath()); }} className="p-1 rounded-md hover:bg-zinc-800/80 text-zinc-500 hover:text-primary cursor-pointer" title="New Folder"><FolderPlus className="w-3 h-3" /></button>
+            <button onClick={(e) => { e.stopPropagation(); setIsEditing(true); }} className="p-1 rounded-md hover:bg-zinc-800/80 text-zinc-500 hover:text-foreground cursor-pointer"><Edit3 className="w-3 h-3" /></button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(resolveCleanStorePath()); }} className="p-1 rounded-md hover:bg-zinc-800/80 text-zinc-500 hover:text-destructive cursor-pointer"><Trash2 className="w-3 h-3" /></button>
           </div>
         )}
       </div>
 
-      {/* CASCADE RECURSIVE SUB-FOLDERS GENERATOR */}
+      {/* 🔄 THE NESTING ENGINE: Draws the crisp vertical guide line connecting subfiles */}
       {isOpen && node.children && node.children.length > 0 && (
-        <div className="pl-4 ml-2.5 border-l border-border/50 space-y-0.5 flex flex-col items-stretch w-auto">
+        <div className="relative pl-3.5 ml-2.5 border-l border-zinc-300/20 dark:border-zinc-800/80 space-y-1 flex flex-col items-stretch w-auto
+          before:absolute before:left-0 before:bottom-2.5 before:w-px before:h-3 before:bg-background before:z-10
+        ">
           {node.children.map((childNode) => (
             <FileTreeNode
               key={childNode.id}
