@@ -1,53 +1,33 @@
-import NextAuth from "next-auth";
-import authConfig from "./auth.config";
 import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
 
-import {
-  DEFAULT_LOGIN_REDIRECT,
-  apiAuthPrefix,
-  authRoutes,
-  publicRoutes,
-} from "./route";
+// 🧱 DUMMY MODULE EXPORTS (Satisfies Turbopack compile checks across your app)
+export const publicRoutes: string[] = ["/"];
+export const authRoutes: string[] = ["/auth/sign-in"];
+export const apiAuthPrefix: string = "/api/auth";
+export const DEFAULT_LOGIN_REDIRECT: string = "/dashboard";
 
-const { auth } = NextAuth(authConfig);
-
-export default auth((req) => {
+export default function middleware(req: NextRequest) {
   const { nextUrl } = req;
 
-  const isLoggedIn = !!req.auth;
-
-  const isApiAuthRoute =
-    nextUrl.pathname.startsWith(apiAuthPrefix);
-
-  const isPublicRoute =
-    publicRoutes.includes(nextUrl.pathname);
-
-  const isAuthRoute =
-    authRoutes.includes(nextUrl.pathname);
-
-  if (isApiAuthRoute) {
+  // 1. Instantly allow internal Next.js assets, static assets, and API routes to load
+  if (
+    nextUrl.pathname.startsWith("/_next") || 
+    nextUrl.pathname.startsWith("/api") ||
+    nextUrl.pathname.includes(".")
+  ) {
     return NextResponse.next();
   }
 
-  if (isAuthRoute) {
-    if (isLoggedIn) {
-      return NextResponse.redirect(
-        new URL(DEFAULT_LOGIN_REDIRECT, nextUrl)
-      );
-    }
-
-    return NextResponse.next();
-  }
-
-  if (!isLoggedIn && !isPublicRoute) {
-    return NextResponse.redirect(
-      new URL("/auth/sign-in", nextUrl)
-    );
+  // 2. FORCE Bypassing: Bounces users off landing/auth screens straight to the dashboard
+  if (nextUrl.pathname === "/" || nextUrl.pathname === "/auth/sign-in") {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
   return NextResponse.next();
-});
+}
 
+// Ensure the middleware monitors every single page lifecycle route
 export const config = {
   matcher: [
     "/((?!.+\\.[\\w]+$|_next).*)",
