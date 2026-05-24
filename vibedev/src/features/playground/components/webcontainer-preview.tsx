@@ -1,20 +1,20 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
+// 📁 This alias matching import line will now resolve flawlessly during next build loops!
+import type { TemplateFolder } from "../libs/path-to-json";
 import { transformToWebContainerFormat } from "../hooks/transformer";
 import { Loader2, XCircle, GripHorizontal } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import TerminalComponent from "./terminal";
-// 💡 FIXED: Imported FileSystemTree directly to replace the missing custom type
-import { WebContainer, type FileSystemTree } from "@webcontainer/api";
+import { WebContainer } from "@webcontainer/api";
 
 // NEW MULTI-TAB MATRIX UTILITIES
 import { MultiTabPreview } from "./multi-tab-preview";
 import { MultiTabTerminal } from "./multi-tab-terminal";
 
 interface WebContainerPreviewProps {
-  // 💡 FIXED: Swapped TemplateFolder for FileSystemTree
-  templateData: FileSystemTree;
+  templateData: TemplateFolder;
   error: string | null;
   instance: WebContainer | null;
   isLoading: boolean;
@@ -145,12 +145,12 @@ const WebContainerPreview: React.FC<WebContainerPreviewProps> = ({
         setCurrentStep(4);
         terminalRef.current?.writeToTerminal("🚀 Booting development core runner: npm start...\r\n");
         const startProcess = await instance.spawn("npm", ["run", "dev"], {
-          env: {
-            CHOKIDAR_USEPOLLING: "true",  // Forces file watcher polling loops inside react-scripts
-            WATCHPACK_POLLING: "true",    // Forces underlying Webpack compile pooling triggers
-            WDS_SOCKET_PORT: "0",         // Prevents container frame hot-reload websocket collisions
-          }
-        });
+  env: {
+    CHOKIDAR_USEPOLLING: "true",  // Forces file watcher polling loops inside react-scripts
+    WATCHPACK_POLLING: "true",    // Forces underlying Webpack compile pooling triggers
+    WDS_SOCKET_PORT: "0",         // Prevents container frame hot-reload websocket collisions
+  }
+});
 
         instance.on("server-ready", (port: number, url: string) => {
           terminalRef.current?.writeToTerminal(`\r\n🌐 Live boundary rendered frame ready at: ${url}\r\n`);
