@@ -1,15 +1,37 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  ReactNode,
+} from "react";
 
-const ThemeContext = createContext<{ isDark: boolean; toggleTheme: () => void } | undefined>(undefined);
+interface ThemeProviderProps {
+  children: ReactNode;
+  attribute?: string;
+  defaultTheme?: "light" | "dark" | "system";
+  enableSystem?: boolean;
+  disableTransitionOnChange?: boolean;
+}
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [isDark, setIsDark] = useState(true);
+interface ThemeContextType {
+  isDark: boolean;
+  toggleTheme: () => void;
+}
+
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
+export function ThemeProvider({
+  children,
+  defaultTheme = "dark",
+}: ThemeProviderProps) {
+  const [isDark, setIsDark] = useState(defaultTheme === "dark");
 
   useEffect(() => {
-    // Sync browser DOM class list with current theme status
-    const root = window.document.documentElement;
+    const root = document.documentElement;
+
     if (isDark) {
       root.classList.add("dark");
     } else {
@@ -17,17 +39,30 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isDark]);
 
-  const toggleTheme = () => setIsDark(!isDark);
+  const toggleTheme = () => {
+    setIsDark((prev) => !prev);
+  };
 
   return (
-    <ThemeContext.Provider value={{ isDark, toggleTheme }}>
+    <ThemeContext.Provider
+      value={{
+        isDark,
+        toggleTheme,
+      }}
+    >
       {children}
     </ThemeContext.Provider>
   );
 }
 
-export const useTheme = () => {
+export function useTheme() {
   const context = useContext(ThemeContext);
-  if (!context) throw new Error("useTheme must be enclosed within a ThemeProvider template context block");
+
+  if (!context) {
+    throw new Error(
+      "useTheme must be used within a ThemeProvider"
+    );
+  }
+
   return context;
-};
+}
