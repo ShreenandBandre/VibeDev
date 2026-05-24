@@ -1,3 +1,4 @@
+// src/app/(ide)/playground/[id]/_components/workspace-editor.tsx
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
@@ -12,7 +13,12 @@ import {
   handleEditorWillMount 
 } from "@/lib/config-monaco";
 
-export function WorkspaceEditor() {
+interface WorkspaceEditorProps {
+  // 🚀 CRITICAL: Direct running WebContainer state engine piped from parent canvas
+  webcontainerInstance?: any;
+}
+
+export function WorkspaceEditor({ webcontainerInstance }: WorkspaceEditorProps) {
   const params = useParams();
   const playgroundId = params?.id as string;
 
@@ -40,22 +46,20 @@ export function WorkspaceEditor() {
   const triggerAutosaveSequence = (updatedValue: string) => {
     if (!activeFileId || !activeFileObject) return;
 
-    // 1. Instantly update content variables in global UI application state
+    // 1. Instantly commit layout state variations into global UI mapping variables
     updateFileContent(activeFileId, updatedValue);
     setLocalSavingStatus("typing");
 
-    // 2. Clear any outstanding scheduled task timeouts
+    // 2. Clear out any un-executed stale scheduled tasks
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
-    // 3. Queue the compilation stream 500ms after user focus macro-halts
+    // 3. Queue the string write payload 400ms after user pauses typing
     saveTimeoutRef.current = setTimeout(async () => {
       setLocalSavingStatus("saving");
       try {
-        const { getWebContainerInstance } = await import("@/features/playground/hooks/use-webcontainer");
-        const containerVM = await getWebContainerInstance();
-        
-        if (containerVM) {
-          await containerVM.fs.writeFile(activeFileObject.path, updatedValue);
+        // Writes straight to your live runtime disk context passed as a prop
+        if (webcontainerInstance) {
+          await webcontainerInstance.fs.writeFile(activeFileObject.path, updatedValue);
           setLocalSavingStatus("saved");
           setTimeout(() => setLocalSavingStatus("idle"), 1200);
         } else {
@@ -65,10 +69,10 @@ export function WorkspaceEditor() {
         console.warn("VM Background Disk Sync Exception Intercept:", fsErr);
         setLocalSavingStatus("idle");
       }
-    }, 500);
+    }, 400);
   };
 
-  // Clean up any remaining autosave timeouts if the view changes
+  // Prevent memory leaks or zombie timeout frames if active tab context shifts
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -83,28 +87,64 @@ export function WorkspaceEditor() {
       setCursorPosition(e.position.lineNumber, e.position.column);
     });
 
-    // 🛰️ FEATURE 3: INLINE COGNITIVE GHOST TEXT AUTO-SUGGESTION INJECTION
-    monaco.languages.registerInlineCompletionsProvider('javascript', {
-      provideInlineCompletions: (model, position) => {
-        const textBeforeCursor = model.getValueInRange({
-          startLineNumber: position.lineNumber,
-          startColumn: 1,
-          endLineNumber: position.lineNumber,
-          endColumn: position.column
-        });
+    // 🛰️ FEATURE 3: LOCAL OLLAMA COGNITIVE GHOST TEXT AUTO-SUGGESTION INJECTION
+    monaco.languages.registerInlineCompletionsProvider(
+      ['javascript', 'typescript', 'javascriptreact', 'typescriptreact', 'html', 'css'], 
+      {
+        provideInlineCompletions: async (model, position, context, token) => {
+          // Guard criteria: extract historical preceding line tokens matching cursor point
+          const textBeforeCursor = model.getValueInRange({
+            startLineNumber: Math.max(1, position.lineNumber - 40), 
+            startColumn: 1,
+            endLineNumber: position.lineNumber,
+            endColumn: position.column
+          });
 
-        if (textBeforeCursor.trim() === 'vibe') {
-          return {
-            items: [{
-              insertText: 'DevCodespaceEngineActive = true; // Press Tab to accept simulation token',
-              range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column)
-            }]
-          };
-        }
-        return { items: [] };
-      },
-      freeInlineCompletions: () => {}
-    });
+          const textAfterCursor = model.getValueInRange({
+            startLineNumber: position.lineNumber,
+            startColumn: position.column,
+            endLineNumber: Math.min(model.getLineCount(), position.lineNumber + 40),
+            endColumn: model.getLineMaxColumn(Math.min(model.getLineCount(), position.lineNumber + 40))
+          });
+
+          // Halt operations early if user is working purely within blank margins
+          if (!textBeforeCursor.trim()) return { items: [] };
+
+          try {
+            const response = await fetch("/api/ai/autocomplete", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                textBeforeCursor,
+                textAfterCursor,
+                filename: model.uri.path.split("/").pop()
+              }),
+            });
+
+            if (!response.ok) return { items: [] };
+            const { completion } = await response.json();
+
+            if (!completion) return { items: [] };
+
+            return {
+              items: [{
+                insertText: completion,
+                range: new monaco.Range(
+                  position.lineNumber, 
+                  position.column, 
+                  position.lineNumber, 
+                  position.column
+                )
+              }]
+            };
+          } catch (err) {
+            console.error("Monaco inline AI network suggestion request abort:", err);
+            return { items: [] };
+          }
+        },
+        freeInlineCompletions: () => {}
+      }
+    );
 
     // 🎹 SHORTCUT MATRIX: AUTOMATED FORMATTING & WEBCONTAINER FILE SYNC
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, async () => {
@@ -118,15 +158,11 @@ export function WorkspaceEditor() {
 
       if (currentActiveId && currentFilesMap[currentActiveId]) {
         const targetFile = currentFilesMap[currentActiveId];
-
         updateFileContent(currentActiveId, updatedValue);
 
         try {
-          const { getWebContainerInstance } = await import("@/features/playground/hooks/use-webcontainer");
-          const containerVM = await getWebContainerInstance();
-          
-          if (containerVM) {
-            await containerVM.fs.writeFile(targetFile.path, updatedValue);
+          if (webcontainerInstance) {
+            await webcontainerInstance.fs.writeFile(targetFile.path, updatedValue);
           }
         } catch (fsErr) {
           console.warn("VM Local Disk Flush Exception Intercept:", fsErr);

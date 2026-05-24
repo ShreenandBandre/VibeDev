@@ -143,7 +143,13 @@ const WebContainerPreview: React.FC<WebContainerPreviewProps> = ({
 
         setCurrentStep(4);
         terminalRef.current?.writeToTerminal("🚀 Booting development core runner: npm start...\r\n");
-        const startProcess = await instance.spawn("npm", ["run", "dev"]);
+        const startProcess = await instance.spawn("npm", ["run", "dev"], {
+  env: {
+    CHOKIDAR_USEPOLLING: "true",  // Forces file watcher polling loops inside react-scripts
+    WATCHPACK_POLLING: "true",    // Forces underlying Webpack compile pooling triggers
+    WDS_SOCKET_PORT: "0",         // Prevents container frame hot-reload websocket collisions
+  }
+});
 
         instance.on("server-ready", (port: number, url: string) => {
           terminalRef.current?.writeToTerminal(`\r\n🌐 Live boundary rendered frame ready at: ${url}\r\n`);

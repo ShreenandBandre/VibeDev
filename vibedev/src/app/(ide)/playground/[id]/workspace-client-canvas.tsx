@@ -119,8 +119,8 @@ export function WorkspaceClientCanvas({
 
         {/* MONACO CODE EDITOR STAGING SEGMENT CANVAS */}
         <div className="flex-1 min-w-0 h-full flex flex-col box-border relative">
-          {/* 🚀 FIXED: Passed down the write callback prop directly into WorkspaceEditor */}
-          <WorkspaceEditor onSaveToContainerDisk={writeFileSync} />
+          {/* 🚀 FIXED: Now piping the actual running sandbox instance down to the workspace editor */}
+          <WorkspaceEditor webcontainerInstance={instance} />
         </div>
 
         {/* PREVIEW CONTAINER RESIZE GUTTER TRACK */}
