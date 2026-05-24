@@ -9,14 +9,14 @@ import "@xterm/xterm/css/xterm.css";
 interface TerminalTab {
   id: string;
   name: string;
-  process: any;
-  inputWriter: any; // 🚀 FIXED: Retain a single persistent writer ref to avoid Stream Lock crashes
+  process: unknown;
+  inputWriter: WritableStreamDefaultWriter<string> | null;
   terminalInstance: Terminal | null;
   fitAddonInstance: FitAddon | null;
 }
 
 interface MultiTabTerminalProps {
-  webcontainerInstance: any;
+  webcontainerInstance: any | null;
 }
 
 export function MultiTabTerminal({ webcontainerInstance }: MultiTabTerminalProps) {
@@ -36,7 +36,7 @@ export function MultiTabTerminal({ webcontainerInstance }: MultiTabTerminalProps
     if (!webcontainerInstance) return;
 
     const term = new Terminal({
-      cursorBlinking: true,
+      cursorBlink: true,
       fontSize: 12,
       fontFamily: "var(--font-mono), monospace",
       theme: {
@@ -158,7 +158,7 @@ export function MultiTabTerminal({ webcontainerInstance }: MultiTabTerminalProps
 
     if (activeTabId === tabId) {
       const nextActiveIndex = activeTabIndex === 0 ? 0 : activeTabIndex - 1;
-      setActiveTabId(filteredTabs[nextActiveIndex].id);
+      setActiveTabId(filteredTabs[nextActiveIndex]?.id ?? filteredTabs[0].id);
     }
   };
 
