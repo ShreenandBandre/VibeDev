@@ -1,5 +1,3 @@
-// src/features/playground/hooks/transformer.ts
-
 export interface TemplateItem {
   filename: string;       // e.g., "index" or "App" or "public"
   fileExtension: string;  // e.g., "html" or "js" or ""
@@ -30,7 +28,8 @@ export function transformToWebContainerFormat(template: { folderName: string; it
     const pathParts = item.path.split("/").filter(Boolean);
     let currentLevel: any = result;
 
-    pathParts.forEach((part, index) => {
+    // 💡 FIXED: Explicitly typed 'part' as a string to clear the implicit-any compilation roadblock
+    pathParts.forEach((part: string, index: number) => {
       const isLastPart = index === pathParts.length - 1;
 
       if (isLastPart) {
