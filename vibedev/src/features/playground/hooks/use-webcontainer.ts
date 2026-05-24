@@ -1,8 +1,8 @@
-// src/features/playground/hooks/use-webcontainer.ts
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { WebContainer } from '@webcontainer/api';
+// Import the active IDEFile type definition from your real store module
 import type { IDEFile } from '@/lib/store/use-ide-store';
 
 interface UseWebContainerReturn {
@@ -18,7 +18,7 @@ interface UseWebContainerReturn {
 let globalWebContainerInstance: WebContainer | null = null;
 let isBootingInFlight = false;
 
-export const useWebContainer = ({ templateData }: { templateData: TemplateFolder }): UseWebContainerReturn => {
+export const useWebContainer = ({ templateData }: { templateData: Record<string, IDEFile> | any }): UseWebContainerReturn => {
   const [serverUrl, setServerUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(!globalWebContainerInstance);
   const [error, setError] = useState<string | null>(null);
