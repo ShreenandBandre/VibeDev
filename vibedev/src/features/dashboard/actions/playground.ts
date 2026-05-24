@@ -116,7 +116,7 @@ export const deletePlaygroundAction = async (playgroundId: string) => {
     await prisma.$transaction(async (tx) => {
       // 1. Double check ownership constraints to protect active tracks
       const targetedWorkspace = await tx.playground.findFirst({
-        where: { id: playgroundId, userId: session.user.id }
+        where: { id: playgroundId, userId: session.user!.id }
       });
 
       if (!targetedWorkspace) {
