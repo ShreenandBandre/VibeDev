@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useState, useEffect } from "react";
+import type * as MonacoEditor from "monaco-editor";
 import { X, Terminal, Keyboard, Folder, ChevronRight, FileCode, Cpu, ShieldCheck } from "lucide-react";
 import { useIDEStore } from "@/lib/store/use-ide-store";
 import Editor, { Monaco } from "@monaco-editor/react";
@@ -90,7 +91,12 @@ export function WorkspaceEditor({ webcontainerInstance }: WorkspaceEditorProps) 
     monaco.languages.registerInlineCompletionsProvider(
       ['javascript', 'typescript', 'javascriptreact', 'typescriptreact', 'html', 'css'], 
       {
-        provideInlineCompletions: async (model, position, context, token) => {
+        provideInlineCompletions: async (
+  model: MonacoEditor.editor.ITextModel,
+  position: MonacoEditor.Position,
+  context: MonacoEditor.languages.InlineCompletionContext,
+  token: MonacoEditor.CancellationToken
+) => {
           // Guard criteria: extract historical preceding line tokens matching cursor point
           const textBeforeCursor = model.getValueInRange({
             startLineNumber: Math.max(1, position.lineNumber - 40), 
