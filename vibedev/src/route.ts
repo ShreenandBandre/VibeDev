@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+// 💡 ADD THIS LINE RIGHT HERE TO FIX THE TURBOPACK BUILD ERRORS:
+export const apiAuthPrefix: string = "/api/auth";
+
 /**
  * The default workspace destination path.
  */
