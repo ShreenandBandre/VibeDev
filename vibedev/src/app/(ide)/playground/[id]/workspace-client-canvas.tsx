@@ -161,17 +161,17 @@ const activeFile = activeFileId ? files[activeFileId] : null;
           
         </div>
         
-         <AIChatSidePanel
-          isOpen={isChatOpen}
+         <AIChatSidePanel 
+          isOpen={isChatOpen} 
           onClose={toggleChat}
-          onInsertCode={(code) => {
+          onInsertCode={(code: string) => { // 🚀 EXPLICIT TYPE ADDED HERE
             if (activeFileId) {
               updateFileContent(activeFileId, code);
             }
           }}
           activeFileName={activeFile?.name}
           activeFileContent={activeFile?.content}
-          activeFileLanguage={activeFile?.path?.split(".").pop()}
+          activeFileLanguage={activeFile?.path.split('.').pop()}
         />
 
       </div>
