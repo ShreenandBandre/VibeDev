@@ -1,18 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// 💡 ADD THIS LINE RIGHT HERE TO FIX THE TURBOPACK BUILD ERRORS:
+// 🧱 DUMMY EXPORTS: Added to satisfy Turbopack imports across the app
+export const publicRoutes: string[] = ["/"];
+export const authRoutes: string[] = ["/auth/sign-in"];
 export const apiAuthPrefix: string = "/api/auth";
-
-/**
- * The default workspace destination path.
- */
 export const DEFAULT_LOGIN_REDIRECT: string = "/dashboard";
 
 export default function middleware(req: NextRequest) {
   const { nextUrl } = req;
 
-  // 1. Allow internal Next.js assets and API routes to load normally
+  // 1. Allow internal Next.js assets, static assets, and API routes to load normally
   if (
     nextUrl.pathname.startsWith("/_next") || 
     nextUrl.pathname.startsWith("/api") ||
@@ -21,7 +19,7 @@ export default function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2. If they land on the landing page or login screen, send them straight to dashboard
+  // 2. Direct Redirect: Send home or login pages straight to the dashboard
   if (nextUrl.pathname === "/" || nextUrl.pathname === "/auth/sign-in") {
     return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, req.url));
   }
