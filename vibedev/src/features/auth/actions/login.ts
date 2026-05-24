@@ -1,7 +1,6 @@
-// src/features/auth/actions/login.ts
 "use server";
 
-import { signIn } from "../../../auth"; // Triggers our server-side AuthHub
+import { signIn } from "../../../auth"; 
 import { DEFAULT_LOGIN_REDIRECT } from "../../../route";
 import { AuthError } from "next-auth";
 

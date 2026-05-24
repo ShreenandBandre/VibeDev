@@ -1,33 +1,44 @@
+import NextAuth from "next-auth";
+import authConfig from "./auth.config";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
-// 🧱 DUMMY MODULE EXPORTS (Satisfies Turbopack compile checks across your app)
-export const publicRoutes: string[] = ["/"];
-export const authRoutes: string[] = ["/auth/sign-in"];
-export const apiAuthPrefix: string = "/api/auth";
-export const DEFAULT_LOGIN_REDIRECT: string = "/dashboard";
+// Local path constants for the gatekeeper logic
+const publicRoutes = ["/"];
+const authRoutes = ["/auth/sign-in"];
+const apiAuthPrefix = "/api/auth";
+const DEFAULT_LOGIN_REDIRECT = "/dashboard";
 
-export default function middleware(req: NextRequest) {
+const { auth } = NextAuth(authConfig);
+
+export default auth((req) => {
   const { nextUrl } = req;
+  const isLoggedIn = !!req.auth;
 
-  // 1. Instantly allow internal Next.js assets, static assets, and API routes to load
-  if (
-    nextUrl.pathname.startsWith("/_next") || 
-    nextUrl.pathname.startsWith("/api") ||
-    nextUrl.pathname.includes(".")
-  ) {
+  const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
+  const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
+  const isAuthRoute = authRoutes.includes(nextUrl.pathname);
+
+  // 1. Allow internal API endpoints to resolve unconditionally
+  if (isApiAuthRoute) {
     return NextResponse.next();
   }
 
-  // 2. FORCE Bypassing: Bounces users off landing/auth screens straight to the dashboard
-  if (nextUrl.pathname === "/" || nextUrl.pathname === "/auth/sign-in") {
-    return NextResponse.redirect(new URL("/dashboard", req.url));
+  // 2. Intercept Authentication Pages
+  if (isAuthRoute) {
+    if (isLoggedIn) {
+      return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT, req.url));
+    }
+    return NextResponse.next();
+  }
+
+  // 3. Secure Internal Protected Layouts
+  if (!isLoggedIn && !isPublicRoute) {
+    return NextResponse.redirect(new URL("/auth/sign-in", req.url));
   }
 
   return NextResponse.next();
-}
+});
 
-// Ensure the middleware monitors every single page lifecycle route
 export const config = {
   matcher: [
     "/((?!.+\\.[\\w]+$|_next).*)",
