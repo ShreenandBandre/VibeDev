@@ -2,9 +2,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Menu, CloudLightning, Upload, Import, Download, Cpu, HardDrive, ArrowLeft, Sun, Moon, Maximize2, Minimize2 } from "lucide-react";
+import {
+  Menu,
+  CloudLightning,
+  Upload,
+  Import,
+  Download,
+  Cpu,
+  HardDrive,
+  ArrowLeft,
+  Sun,
+  Moon,
+  Maximize2,
+  Minimize2,
+  MessageSquare,
+} from "lucide-react";
 import { useIDEStore } from "@/lib/store/use-ide-store";
 import Link from "next/link";
+import { AISettingsDropdown } from "@/features/playground/components/ai-settings-dropdown";
 
 interface WorkspaceHeaderProps {
   playgroundId: string;
@@ -13,9 +28,31 @@ interface WorkspaceHeaderProps {
 }
 
 export function WorkspaceHeader({ playgroundId, projectTitle, projectTemplate }: WorkspaceHeaderProps) {
-  const { files, initializeWorkspace, addNewItem, updateFileContent, isSaving, syncWithCloudAtlas, themeMode, toggleThemeMode, initializeTheme } = useIDEStore();
+  const {
+  files,
+  activeFileId,
+  initializeWorkspace,
+  addNewItem,
+  updateFileContent,
+  isSaving,
+  syncWithCloudAtlas,
+  themeMode,
+  toggleThemeMode,
+  initializeTheme,
+  toggleChat,
+} = useIDEStore();
+
   const [isHamburgerOpen, setIsHamburgerOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // 🛰️ Local AI Controls Toggles Configuration States
+  const [isAISuggestionsEnabled, setIsAISuggestionsEnabled] = useState(true);
+  const [isCodeCompletionAllFilesEnabled, setIsCodeCompletionAllFilesEnabled] = useState(true);
+  const [isCodeCompletionTSXEnabled, setIsCodeCompletionTSXEnabled] = useState(true);
+  const [isNextEditSuggestionsEnabled, setIsNextEditSuggestionsEnabled] = useState(false);
+  const [suggestionLoading, setSuggestionLoading] = useState(false);
+
+  const activeFileObject = activeFileId ? files[activeFileId] : null;
 
   useEffect(() => {
     initializeTheme();
@@ -74,6 +111,21 @@ export function WorkspaceHeader({ playgroundId, projectTitle, projectTemplate }:
     setIsHamburgerOpen(false);
   };
 
+  // 🚀 Manual trigger proxy to dispatch custom completion actions straight into active editor views
+  const handleTriggerAISuggestion = async (type: string, mode: "overlay" | "inline") => {
+    if (!activeFileObject) return;
+    setSuggestionLoading(true);
+    try {
+      window.dispatchEvent(new CustomEvent("vibe-manual-ai-trigger", { 
+        detail: { type, mode } 
+      }));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setTimeout(() => setSuggestionLoading(false), 800);
+    }
+  };
+
   return (
     <div className="h-11 w-full border-b border-zinc-200 dark:border-zinc-900 bg-white dark:bg-[#050506] flex items-center justify-between px-4 select-none relative z-50 shrink-0 transition-colors duration-150 box-border">
       
@@ -104,6 +156,32 @@ export function WorkspaceHeader({ playgroundId, projectTitle, projectTemplate }:
 
       {/* RIGHT SIDE ALIGNED INTERACTION TOOLBOX */}
       <div className="flex items-center gap-2 w-1/4 justify-end">
+        
+        <button
+  onClick={toggleChat}
+  className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-primary dark:hover:text-primary bg-zinc-50 dark:bg-zinc-900/20 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer transition-all active:scale-95"
+  title="Open AI Chat"
+>
+  <MessageSquare className="w-3.5 h-3.5" />
+</button>
+        
+        {/* 🚀 AI SUITE SETTINGS DROPDOWN INTEGRATION */}
+        <AISettingsDropdown
+          activeFile={activeFileObject}
+          isAISuggestionsEnabled={isAISuggestionsEnabled}
+          isCodeCompletionAllFilesEnabled={isCodeCompletionAllFilesEnabled}
+          isCodeCompletionTSXEnabled={isCodeCompletionTSXEnabled}
+          isNextEditSuggestionsEnabled={isNextEditSuggestionsEnabled}
+          onToggleAISuggestions={setIsAISuggestionsEnabled}
+          onToggleCodeCompletionAllFiles={setIsCodeCompletionAllFilesEnabled}
+          onToggleCodeCompletionTSX={setIsCodeCompletionTSXEnabled}
+          onToggleNextEditSuggestions={setIsNextEditSuggestionsEnabled}
+          onTriggerAISuggestion={handleTriggerAISuggestion}
+          suggestionLoading={suggestionLoading}
+        />
+
+        <div className="w-px h-4 bg-zinc-200 dark:bg-zinc-800 mx-0.5" />
+
         <button onClick={toggleThemeMode} className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-foreground bg-zinc-50 dark:bg-zinc-900/20 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer transition-all active:scale-95" title="Toggle System Theme">
           {themeMode === "dark" ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5 text-indigo-500" />}
         </button>

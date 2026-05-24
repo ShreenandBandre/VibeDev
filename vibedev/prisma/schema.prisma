@@ -136,3 +136,57 @@ model ChatMessage {
 
   @@index([userId])
 }
+
+model AIChatSession {
+  id           String        @id @default(cuid()) @map("_id")
+  userId       String        @map("user_id")
+  playgroundId String        @map("playground_id")
+  title        String        @default("New AI Consultation Thread")
+  mode         String        @default("chat") // "chat" | "review" | "fix" | "optimize"
+  messages     DbMessage[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@index([userId])
+  @@index([playgroundId])
+}
+
+model DbMessage {
+  id           String          @id @default(cuid()) @map("_id")
+  sessionId    String          @map("session_id")
+  session      AIChatSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role         String          // "user" | "assistant"
+  content      String
+  type         String          @default("chat") // "chat" | "code_review" | "error_fix" | "optimization"
+  modelUsed    String?         @map("model_used")
+  tokensUsed   Int?            @map("tokens_used")
+  attachments  DbAttachment[]
+  suggestions  DbSuggestion[]
+  createdAt    DateTime        @default(now())
+}
+
+model DbAttachment {
+  id         String    @id @default(cuid()) @map("_id")
+  messageId  String    @map("message_id")
+  message    DbMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  name       String
+  path       String?
+  content    String
+  language   String
+  size       Int
+}
+
+model DbSuggestion {
+  id             String    @id @default(cuid()) @map("_id")
+  messageId      String    @map("message_id")
+  message        DbMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  title          String
+  description    String
+  code           String
+  language       String
+  category       String
+  confidence     Float?
+  fileName       String?
+  insertLine     Int?
+  insertColumn   Int?
+}

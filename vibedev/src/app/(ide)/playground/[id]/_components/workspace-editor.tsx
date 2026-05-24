@@ -14,7 +14,6 @@ import {
 } from "@/lib/config-monaco";
 
 interface WorkspaceEditorProps {
-  // 🚀 CRITICAL: Direct running WebContainer state engine piped from parent canvas
   webcontainerInstance?: any;
 }
 
@@ -39,25 +38,22 @@ export function WorkspaceEditor({ webcontainerInstance }: WorkspaceEditorProps) 
 
   const activeFileObject = activeFileId ? files[activeFileId] : null;
   const editorRef = useRef<any>(null);
+  const monacoRef = useRef<Monaco | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [localSavingStatus, setLocalSavingStatus] = useState<"idle" | "typing" | "saving" | "saved">("idle");
 
-  // 🚀 FEATURE 1: DEBOUNCED WEBCONTAINER VM FILESYSTEM AUTOSAVE ENGINE
+  // 🚀 FEATURE 1: DEBOUNCED AUTOMATIC FILESYSTEM AUTOSAVE
   const triggerAutosaveSequence = (updatedValue: string) => {
     if (!activeFileId || !activeFileObject) return;
 
-    // 1. Instantly commit layout state variations into global UI mapping variables
     updateFileContent(activeFileId, updatedValue);
     setLocalSavingStatus("typing");
 
-    // 2. Clear out any un-executed stale scheduled tasks
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
 
-    // 3. Queue the string write payload 400ms after user pauses typing
     saveTimeoutRef.current = setTimeout(async () => {
       setLocalSavingStatus("saving");
       try {
-        // Writes straight to your live runtime disk context passed as a prop
         if (webcontainerInstance) {
           await webcontainerInstance.fs.writeFile(activeFileObject.path, updatedValue);
           setLocalSavingStatus("saved");
@@ -72,7 +68,6 @@ export function WorkspaceEditor({ webcontainerInstance }: WorkspaceEditorProps) 
     }, 400);
   };
 
-  // Prevent memory leaks or zombie timeout frames if active tab context shifts
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
@@ -81,66 +76,67 @@ export function WorkspaceEditor({ webcontainerInstance }: WorkspaceEditorProps) 
 
   const handleEditorDidMount = (editor: any, monaco: Monaco) => {
     editorRef.current = editor;
+    monacoRef.current = monaco;
 
-    // 🚀 FEATURE 2: CAPTURE MONACO CURSOR LINE & COLUMN COORDINATES
+    // 🚀 FEATURE 2: CAPTURE MONACO CURSOR COORDINATES
     editor.onDidChangeCursorPosition((e: any) => {
       setCursorPosition(e.position.lineNumber, e.position.column);
     });
 
-    // 🛰️ FEATURE 3: LOCAL OLLAMA COGNITIVE GHOST TEXT AUTO-SUGGESTION INJECTION
+    let debounceAutocompleteTimer: NodeJS.Timeout;
+
+    // 🛰️ FEATURE 3: LOCAL OLLAMA INLINE GHOST TEXT GENERATOR WITH DEBOUNCE PROTECTION
     monaco.languages.registerInlineCompletionsProvider(
       ['javascript', 'typescript', 'javascriptreact', 'typescriptreact', 'html', 'css'], 
       {
-        provideInlineCompletions: async (model, position, context, token) => {
-          // Guard criteria: extract historical preceding line tokens matching cursor point
-          const textBeforeCursor = model.getValueInRange({
-            startLineNumber: Math.max(1, position.lineNumber - 40), 
-            startColumn: 1,
-            endLineNumber: position.lineNumber,
-            endColumn: position.column
+        provideInlineCompletions: (model, position, context, token) => {
+          return new Promise((resolve) => {
+            if (debounceAutocompleteTimer) clearTimeout(debounceAutocompleteTimer);
+
+            debounceAutocompleteTimer = setTimeout(async () => {
+              if (token.isCancellationRequested) return resolve({ items: [] });
+
+              const textBeforeCursor = model.getValueInRange({
+                startLineNumber: Math.max(1, position.lineNumber - 35), 
+                startColumn: 1,
+                endLineNumber: position.lineNumber,
+                endColumn: position.column
+              });
+
+              const textAfterCursor = model.getValueInRange({
+                startLineNumber: position.lineNumber,
+                startColumn: position.column,
+                endLineNumber: Math.min(model.getLineCount(), position.lineNumber + 35),
+                endColumn: model.getLineMaxColumn(Math.min(model.getLineCount(), position.lineNumber + 35))
+              });
+
+              if (!textBeforeCursor.trim() || token.isCancellationRequested) {
+                return resolve({ items: [] });
+              }
+
+              try {
+                const response = await fetch("/api/ai/autocomplete", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ textBeforeCursor, textAfterCursor, filename: model.uri.path.split("/").pop() }),
+                });
+
+                if (!response.ok || token.isCancellationRequested) return resolve({ items: [] });
+                const { completion } = await response.json();
+
+                if (!completion) return resolve({ items: [] });
+
+                return resolve({
+                  items: [{
+                    insertText: completion,
+                    range: new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column)
+                  }]
+                });
+              } catch (err) {
+                return resolve({ items: [] });
+              }
+            }, 400); // Wait for a natural 400ms pause in user typing
           });
-
-          const textAfterCursor = model.getValueInRange({
-            startLineNumber: position.lineNumber,
-            startColumn: position.column,
-            endLineNumber: Math.min(model.getLineCount(), position.lineNumber + 40),
-            endColumn: model.getLineMaxColumn(Math.min(model.getLineCount(), position.lineNumber + 40))
-          });
-
-          // Halt operations early if user is working purely within blank margins
-          if (!textBeforeCursor.trim()) return { items: [] };
-
-          try {
-            const response = await fetch("/api/ai/autocomplete", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                textBeforeCursor,
-                textAfterCursor,
-                filename: model.uri.path.split("/").pop()
-              }),
-            });
-
-            if (!response.ok) return { items: [] };
-            const { completion } = await response.json();
-
-            if (!completion) return { items: [] };
-
-            return {
-              items: [{
-                insertText: completion,
-                range: new monaco.Range(
-                  position.lineNumber, 
-                  position.column, 
-                  position.lineNumber, 
-                  position.column
-                )
-              }]
-            };
-          } catch (err) {
-            console.error("Monaco inline AI network suggestion request abort:", err);
-            return { items: [] };
-          }
         },
         freeInlineCompletions: () => {}
       }
@@ -179,6 +175,20 @@ export function WorkspaceEditor({ webcontainerInstance }: WorkspaceEditorProps) 
       if (currentActiveId) closeTab(currentActiveId);
     });
   };
+
+  // 🚀 LISTEN TO MANUAL DROPDOWN TRIGGERS
+  useEffect(() => {
+    const handleManualAiTrigger = async (e: Event) => {
+      const customEvent = e as CustomEvent;
+      if (!editorRef.current || !monacoRef.current || !activeFileObject) return;
+      
+      // Forces Monaco to manually open standard completion lists or invoke actions based on type
+      editorRef.current.trigger("manual-ai", "editor.action.inlineSuggest.trigger", null);
+    };
+
+    window.addEventListener("vibe-manual-ai-trigger", handleManualAiTrigger);
+    return () => window.removeEventListener("vibe-manual-ai-trigger", handleManualAiTrigger);
+  }, [activeFileObject]);
 
   // 🚀 FEATURE 4: HORIZONTAL BREADCRUMB FOLDER FLOW SCHEMATIC
   const renderHorizontalFolderFlow = () => {
@@ -294,14 +304,30 @@ export function WorkspaceEditor({ webcontainerInstance }: WorkspaceEditorProps) 
                 // Synchronizing advanced codespace utilities...
               </div>
             }
-            options={defaultMonacoOptions}
+            options={{
+              ...defaultMonacoOptions,
+              // 🚀 CRITICAL FOR INLINE GHOST-TEXT GRAPHICS RENDERING
+              inlineSuggest: {
+                enabled: true,
+                mode: "prefix",
+                showToolbar: "always",
+              },
+              suggest: {
+                preview: true,
+              },
+              quickSuggestions: {
+                other: true,
+                comments: false,
+                strings: false
+              }
+            }}
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8 select-none animate-fade-in bg-zinc-50 dark:bg-transparent">
             <div className="relative mb-6 group">
               <div className="absolute inset-0 bg-primary/20 rounded-2xl blur-xl group-hover:bg-primary/30 transition-all duration-500" />
               <div className="w-16 h-16 rounded-2xl border border-zinc-200 dark:border-border/80 bg-white dark:bg-zinc-950 flex items-center justify-center relative shadow-2xl transition-transform duration-300 group-hover:scale-105">
-                <Terminal className="w-8 h-8 text-primary stroke-[1.5]" />
+                <X className="w-8 h-8 text-primary stroke-[1.5]" />
               </div>
             </div>
 
@@ -334,7 +360,7 @@ export function WorkspaceEditor({ webcontainerInstance }: WorkspaceEditorProps) 
         )}
       </div>
 
-      {/* 🚀 FEATURE 5: HIGH-DENSITY COORDINATE STATUS BAR FOOTER STRIP */}
+      {/* 🚀 FEATURE 5: HIGH-DENSITY COORDINATE STATUS BAR */}
       <div className="h-6 w-full border-t border-zinc-200 dark:border-neutral-900 bg-zinc-50 dark:bg-neutral-950 text-zinc-500 dark:text-zinc-400 font-mono text-[11px] flex items-center justify-between px-4 shrink-0 select-none z-20 box-border">
         <div className="flex items-center gap-4">
           <span className="flex items-center gap-1 text-primary/80 font-bold uppercase tracking-wider text-[10px]">

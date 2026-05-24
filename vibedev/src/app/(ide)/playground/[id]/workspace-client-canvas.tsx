@@ -4,6 +4,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useIDEStore, IDEFile } from "@/lib/store/use-ide-store";
 import { FolderCode, GitBranch, Blocks, Layers, Settings, ChevronRight, ChevronLeft } from "lucide-react";
+import { AIChatSidePanel } from "@/features/ai-chat/components/ai-chat-sidepanel";
 
 import { useWebContainer } from "@/features/playground/hooks/use-webcontainer";
 import WebContainerPreview from "@/features/playground/components/webcontainer-preview";
@@ -29,7 +30,16 @@ export function WorkspaceClientCanvas({
   templateData,
   recentProjects = []
 }: WorkspaceClientCanvasProps) {
-  const { initializeWorkspace } = useIDEStore();
+  const {
+  initializeWorkspace,
+  isChatOpen,
+  toggleChat,
+  files,
+  activeFileId,
+  updateFileContent,
+} = useIDEStore();
+
+const activeFile = activeFileId ? files[activeFileId] : null;
   
   // 📏 PANEL CONTROLLER LAYOUT RESIZER STATES
   const [sidebarWidth, setSidebarWidth] = useState(260);
@@ -40,6 +50,7 @@ export function WorkspaceClientCanvas({
   const containerRef = useRef<HTMLDivElement>(null);
   const isResizingSidebar = useRef(false);
   const isResizingPreview = useRef(false);
+  
 
   // 🤖 SPINNING HOOK STATES RIGHT AT ROOT LEVEL
   const { instance, isLoading, error, serverUrl, writeFileSync } = useWebContainer({ templateData });
@@ -146,7 +157,22 @@ export function WorkspaceClientCanvas({
             serverUrl={serverUrl} 
             writeFileSync={writeFileSync}
           />
+
+          
         </div>
+        
+         <AIChatSidePanel
+          isOpen={isChatOpen}
+          onClose={toggleChat}
+          onInsertCode={(code) => {
+            if (activeFileId) {
+              updateFileContent(activeFileId, code);
+            }
+          }}
+          activeFileName={activeFile?.name}
+          activeFileContent={activeFile?.content}
+          activeFileLanguage={activeFile?.path?.split(".").pop()}
+        />
 
       </div>
     </div>

@@ -1,4 +1,5 @@
 // src/lib/store/use-ide-store.ts
+
 import { create } from "zustand";
 import { toast } from "sonner";
 
@@ -19,26 +20,39 @@ interface IDEState {
   searchQuery: string;
   isSaving: boolean;
   themeMode: "dark" | "light";
-  
+
+  // 🚀 AI CHAT PANEL STATE
+  isChatOpen: boolean;
+
   // 🚀 AUTOSAVE & COORDINATE STATS UPDATES
   cursorLine: number;
   cursorColumn: number;
-  
+
   // CORE DISPATCH ACTIONS
   initializeWorkspace: (initialFiles: IDEFile[]) => void;
   setActiveFileId: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
   closeTab: (id: string) => void;
   updateFileContent: (id: string, content: string) => void;
-  addNewItem: (name: string, isFolder: boolean, parentId: string | null) => void;
+  addNewItem: (
+    name: string,
+    isFolder: boolean,
+    parentId: string | null
+  ) => void;
   renameItem: (id: string, newName: string) => void;
   deleteItem: (id: string) => void;
   syncWithCloudAtlas: (playgroundId: string) => Promise<void>;
   toggleThemeMode: () => void;
   initializeTheme: () => void;
-  
+
+  // 🚀 AI CHAT PANEL ACTION
+  toggleChat: () => void;
+
   // 🚀 ACTION DISPATCHERS FOR STATUS BAR
-  setCursorPosition: (line: number, column: number) => void;
+  setCursorPosition: (
+    line: number,
+    column: number
+  ) => void;
 }
 
 export const useIDEStore = create<IDEState>((set, get) => ({
@@ -49,144 +63,419 @@ export const useIDEStore = create<IDEState>((set, get) => ({
   searchQuery: "",
   isSaving: false,
   themeMode: "dark",
-  
+
+  // 🚀 AI CHAT INITIAL STATE
+  isChatOpen: false,
+
   // 🚀 Initial states
   cursorLine: 1,
   cursorColumn: 1,
 
+  // 🚀 CHAT TOGGLE
+  toggleChat: () =>
+    set((state) => ({
+      isChatOpen: !state.isChatOpen,
+    })),
+
   initializeTheme: () => {
     if (typeof window === "undefined") return;
-    const saved = localStorage.getItem("vibedev-theme") as "dark" | "light";
+
+    const saved = localStorage.getItem(
+      "vibedev-theme"
+    ) as "dark" | "light";
+
     const mode = saved || "dark";
-    document.documentElement.classList.toggle("dark", mode === "dark");
+
+    document.documentElement.classList.toggle(
+      "dark",
+      mode === "dark"
+    );
+
     set({ themeMode: mode });
   },
 
-  toggleThemeMode: () => set((state) => {
-    const nextMode = state.themeMode === "dark" ? "light" : "dark";
-    localStorage.setItem("vibedev-theme", nextMode);
-    document.documentElement.classList.toggle("dark", nextMode === "dark");
-    return { themeMode: nextMode };
-  }),
+  toggleThemeMode: () =>
+    set((state) => {
+      const nextMode =
+        state.themeMode === "dark"
+          ? "light"
+          : "dark";
 
-  setCursorPosition: (line, column) => set({ cursorLine: line, cursorColumn: column }),
+      localStorage.setItem(
+        "vibedev-theme",
+        nextMode
+      );
 
-  initializeWorkspace: (initialFiles) => {
-    const fileMap: Record<string, IDEFile> = {};
-    initialFiles.forEach(f => { fileMap[f.id] = f; });
-    
-    const coreFirstFile = initialFiles.find(f => !f.isFolder);
+      document.documentElement.classList.toggle(
+        "dark",
+        nextMode === "dark"
+      );
+
+      return {
+        themeMode: nextMode,
+      };
+    }),
+
+  setCursorPosition: (
+    line,
+    column
+  ) =>
+    set({
+      cursorLine: line,
+      cursorColumn: column,
+    }),
+
+  initializeWorkspace: (
+    initialFiles
+  ) => {
+    const fileMap: Record<
+      string,
+      IDEFile
+    > = {};
+
+    initialFiles.forEach((f) => {
+      fileMap[f.id] = f;
+    });
+
+    const coreFirstFile =
+      initialFiles.find(
+        (f) => !f.isFolder
+      );
+
     set({
       files: fileMap,
-      activeFileId: coreFirstFile ? coreFirstFile.id : null,
-      openTabs: coreFirstFile ? [coreFirstFile.id] : [],
+      activeFileId:
+        coreFirstFile
+          ? coreFirstFile.id
+          : null,
+      openTabs: coreFirstFile
+        ? [coreFirstFile.id]
+        : [],
       dirtyFileIds: [],
       searchQuery: "",
       cursorLine: 1,
-      cursorColumn: 1
+      cursorColumn: 1,
     });
   },
 
-  setActiveFileId: (id) => set((state) => {
-    if (!id) return { activeFileId: null };
-    const nextTabs = state.openTabs.includes(id) ? state.openTabs : [...state.openTabs, id];
-    return { activeFileId: id, openTabs: nextTabs };
-  }),
+  setActiveFileId: (id) =>
+    set((state) => {
+      if (!id)
+        return {
+          activeFileId: null,
+        };
 
-  setSearchQuery: (query) => set({ searchQuery: query }),
+      const nextTabs =
+        state.openTabs.includes(id)
+          ? state.openTabs
+          : [
+              ...state.openTabs,
+              id,
+            ];
 
-  closeTab: (id) => set((state) => {
-    const nextTabs = state.openTabs.filter(t => t !== id);
-    let nextActive = state.activeFileId;
-    if (state.activeFileId === id) {
-      nextActive = nextTabs[nextTabs.length - 1] || null;
-    }
-    return { openTabs: nextTabs, activeFileId: nextActive };
-  }),
+      return {
+        activeFileId: id,
+        openTabs: nextTabs,
+      };
+    }),
 
-  updateFileContent: (id, content) => set((state) => {
-    if (!state.files[id]) return {};
-    const nextDirtyIds = state.dirtyFileIds.includes(id) ? state.dirtyFileIds : [...state.dirtyFileIds, id];
-    return {
-      files: { ...state.files, [id]: { ...state.files[id], content } },
-      dirtyFileIds: nextDirtyIds
-    };
-  }),
+  setSearchQuery: (query) =>
+    set({
+      searchQuery: query,
+    }),
 
-  addNewItem: (name, isFolder, parentId) => set((state) => {
-    const uniqueSecureId = "node_" + Math.random().toString(36).substring(2, 15);
-    const parentNode = parentId ? state.files[parentId] : null;
-    const computedPath = parentNode ? `${parentNode.path}/${name}` : name;
+  closeTab: (id) =>
+    set((state) => {
+      const nextTabs =
+        state.openTabs.filter(
+          (t) => t !== id
+        );
 
-    const newItem: IDEFile = {
-      id: uniqueSecureId,
-      name,
-      path: computedPath,
-      content: isFolder ? "" : `// Initialized workspace unit: ${name}`,
-      isFolder,
-      parentId
-    };
+      let nextActive =
+        state.activeFileId;
 
-    toast.success(`Successfully provisioned ${isFolder ? "folder" : "file"} container node.`);
-    const nextDirtyIds = isFolder ? state.dirtyFileIds : [...state.dirtyFileIds, uniqueSecureId];
+      if (
+        state.activeFileId === id
+      ) {
+        nextActive =
+          nextTabs[
+            nextTabs.length - 1
+          ] || null;
+      }
 
-    return {
-      files: { ...state.files, [uniqueSecureId]: newItem },
-      activeFileId: isFolder ? state.activeFileId : uniqueSecureId,
-      openTabs: isFolder ? state.openTabs : [...state.openTabs, uniqueSecureId],
-      dirtyFileIds: nextDirtyIds
-    };
-  }),
+      return {
+        openTabs: nextTabs,
+        activeFileId:
+          nextActive,
+      };
+    }),
 
-  renameItem: (id, newName) => set((state) => {
-    const target = state.files[id];
-    if (!target) return {};
+  updateFileContent: (
+    id,
+    content
+  ) =>
+    set((state) => {
+      if (!state.files[id])
+        return {};
 
-    const updatedFiles = { ...state.files };
-    updatedFiles[id] = { ...target, name: newName };
+      const nextDirtyIds =
+        state.dirtyFileIds.includes(
+          id
+        )
+          ? state.dirtyFileIds
+          : [
+              ...state.dirtyFileIds,
+              id,
+            ];
 
-    toast.info(`Renamed asset mapping to: "${newName}"`);
-    const nextDirtyIds = state.dirtyFileIds.includes(id) ? state.dirtyFileIds : [...state.dirtyFileIds, id];
+      return {
+        files: {
+          ...state.files,
+          [id]: {
+            ...state.files[id],
+            content,
+          },
+        },
+        dirtyFileIds:
+          nextDirtyIds,
+      };
+    }),
 
-    return { files: updatedFiles, dirtyFileIds: nextDirtyIds };
-  }),
+  addNewItem: (
+    name,
+    isFolder,
+    parentId
+  ) =>
+    set((state) => {
+      const uniqueSecureId =
+        "node_" +
+        Math.random()
+          .toString(36)
+          .substring(2, 15);
 
-  deleteItem: (id) => set((state) => {
-    const updatedFiles = { ...state.files };
-    const purgeNodeIds = new Set<string>([id]);
-    let parsingQueueSize = 0;
+      const parentNode =
+        parentId
+          ? state.files[parentId]
+          : null;
 
-    while (purgeNodeIds.size !== parsingQueueSize) {
-      parsingQueueSize = purgeNodeIds.size;
-      Object.values(updatedFiles).forEach(f => {
-        if (f.parentId && purgeNodeIds.has(f.parentId)) purgeNodeIds.add(f.id);
-      });
-    }
+      const computedPath =
+        parentNode
+          ? `${parentNode.path}/${name}`
+          : name;
 
-    purgeNodeIds.forEach(pId => delete updatedFiles[pId]);
-    const nextTabs = state.openTabs.filter(tabId => !purgeNodeIds.has(tabId));
-    const nextActive = nextTabs.includes(state.activeFileId || "") ? state.activeFileId : (nextTabs[0] || null);
-    const nextDirtyIds = state.dirtyFileIds.filter(dId => !purgeNodeIds.has(dId));
+      const newItem: IDEFile = {
+        id: uniqueSecureId,
+        name,
+        path: computedPath,
+        content: isFolder
+          ? ""
+          : `// Initialized workspace unit: ${name}`,
+        isFolder,
+        parentId,
+      };
 
-    toast.error("Purged structural asset records safely from tree.");
-    return { files: updatedFiles, openTabs: nextTabs, activeFileId: nextActive, dirtyFileIds: nextDirtyIds };
-  }),
+      toast.success(
+        `Successfully provisioned ${
+          isFolder
+            ? "folder"
+            : "file"
+        } container node.`
+      );
 
-  syncWithCloudAtlas: async (playgroundId) => {
-    set({ isSaving: true });
+      const nextDirtyIds =
+        isFolder
+          ? state.dirtyFileIds
+          : [
+              ...state.dirtyFileIds,
+              uniqueSecureId,
+            ];
+
+      return {
+        files: {
+          ...state.files,
+          [uniqueSecureId]:
+            newItem,
+        },
+        activeFileId:
+          isFolder
+            ? state.activeFileId
+            : uniqueSecureId,
+        openTabs: isFolder
+          ? state.openTabs
+          : [
+              ...state.openTabs,
+              uniqueSecureId,
+            ],
+        dirtyFileIds:
+          nextDirtyIds,
+      };
+    }),
+
+  renameItem: (
+    id,
+    newName
+  ) =>
+    set((state) => {
+      const target =
+        state.files[id];
+
+      if (!target)
+        return {};
+
+      const updatedFiles = {
+        ...state.files,
+      };
+
+      updatedFiles[id] = {
+        ...target,
+        name: newName,
+      };
+
+      toast.info(
+        `Renamed asset mapping to: "${newName}"`
+      );
+
+      const nextDirtyIds =
+        state.dirtyFileIds.includes(
+          id
+        )
+          ? state.dirtyFileIds
+          : [
+              ...state.dirtyFileIds,
+              id,
+            ];
+
+      return {
+        files: updatedFiles,
+        dirtyFileIds:
+          nextDirtyIds,
+      };
+    }),
+
+  deleteItem: (id) =>
+    set((state) => {
+      const updatedFiles = {
+        ...state.files,
+      };
+
+      const purgeNodeIds =
+        new Set<string>([id]);
+
+      let parsingQueueSize = 0;
+
+      while (
+        purgeNodeIds.size !==
+        parsingQueueSize
+      ) {
+        parsingQueueSize =
+          purgeNodeIds.size;
+
+        Object.values(
+          updatedFiles
+        ).forEach((f) => {
+          if (
+            f.parentId &&
+            purgeNodeIds.has(
+              f.parentId
+            )
+          ) {
+            purgeNodeIds.add(
+              f.id
+            );
+          }
+        });
+      }
+
+      purgeNodeIds.forEach(
+        (pId) =>
+          delete updatedFiles[pId]
+      );
+
+      const nextTabs =
+        state.openTabs.filter(
+          (tabId) =>
+            !purgeNodeIds.has(
+              tabId
+            )
+        );
+
+      const nextActive =
+        nextTabs.includes(
+          state.activeFileId ||
+            ""
+        )
+          ? state.activeFileId
+          : nextTabs[0] || null;
+
+      const nextDirtyIds =
+        state.dirtyFileIds.filter(
+          (dId) =>
+            !purgeNodeIds.has(
+              dId
+            )
+        );
+
+      toast.error(
+        "Purged structural asset records safely from tree."
+      );
+
+      return {
+        files: updatedFiles,
+        openTabs: nextTabs,
+        activeFileId:
+          nextActive,
+        dirtyFileIds:
+          nextDirtyIds,
+      };
+    }),
+
+  syncWithCloudAtlas: async (
+    playgroundId
+  ) => {
+    set({
+      isSaving: true,
+    });
+
     try {
-      const response = await fetch(`/api/playground/${playgroundId}/save`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ filePayloadArray: Object.values(get().files) }),
+      const response =
+        await fetch(
+          `/api/playground/${playgroundId}/save`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              filePayloadArray:
+                Object.values(
+                  get().files
+                ),
+            }),
+          }
+        );
+
+      if (!response.ok) {
+        throw new Error(
+          "Database transaction error."
+        );
+      }
+
+      set({
+        dirtyFileIds: [],
       });
-      if (!response.ok) throw new Error("Database transaction error.");
-      set({ dirtyFileIds: [] });
-      toast.success("All codespace segments synchronized to Atlas Cloud securely!");
+
+      toast.success(
+        "All codespace segments synchronized to Atlas Cloud securely!"
+      );
     } catch (err) {
-      toast.error("Failed to sync container variables safely down to persistent tables.");
+      toast.error(
+        "Failed to sync container variables safely down to persistent tables."
+      );
     } finally {
-      set({ isSaving: false });
+      set({
+        isSaving: false,
+      });
     }
-  }
+  },
 }));

@@ -1,64 +1,38 @@
-// src/app/api/ai/autocomplete/route.ts
 import { NextRequest, NextResponse } from "next/server";
+import OpenAI from "openai";
+
+// Initialize Groq client (using OpenAI SDK compatible with Groq)
+const groq = new OpenAI({
+  apiKey: process.env.GROQ_API_KEY,
+  baseURL: "https://api.groq.com/openai/v1",
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const { textBeforeCursor, textAfterCursor, filename } = await req.json();
+    const { textBeforeCursor, textAfterCursor } = await req.json();
 
     if (!textBeforeCursor) {
       return NextResponse.json({ completion: "" });
     }
 
-    // 🚀 CODELLAMA SPECIFIC FILL-IN-THE-MIDDLE (FIM) PROMPT STRUCTURE
-    // CodeLlama expects: <PRE> code_before <SUF> code_after <MID>
-    const prompt = `<PRE> ${textBeforeCursor} <SUF>${textAfterCursor} <MID>`;
+    // FIM (Fill-In-the-Middle) prompt for Llama 3 models
+    const prompt = `<|fim_prefix|>${textBeforeCursor}<|fim_suffix|>${textAfterCursor}<|fim_middle|>`;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 800); // Bumped to 800ms for 7B weight scaling
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile", // Or "llama-3.1-8b-instant" for even faster speeds
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.1,
+      max_tokens: 64, // Keep it short for fast autocomplete
+      stop: ["<|file_separator|>", "<|file_separator|>", "\n", "```"]
+    });
 
-    try {
-      const ollamaResponse = await fetch("http://localhost:11434/api/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model: "codellama:7b-code", // 🚀 MODEL UPDATE
-          prompt: prompt,
-          options: {
-            num_predict: 24,       
-            num_ctx: 2048,         
-            temperature: 0.1,      
-            top_p: 0.9,
-            // 🚀 CODELLAMA HARD STOP TOKENS
-            stop: ["<PRE>", "<SUF>", "<MID>", "\n", "```", "<EOT>"] 
-          },
-          stream: false
-        }),
-      });
+    const rawCompletion = completion.choices[0]?.message?.content || "";
 
-      clearTimeout(timeoutId);
-
-      if (!ollamaResponse.ok) {
-        throw new Error("Ollama service communication breakdown.");
-      }
-
-      const data = await ollamaResponse.json();
-      let rawCompletion = data.response || "";
-
-      // Scrub carriage returns so Monaco indentation blocks match up cleanly
-      rawCompletion = rawCompletion.replace(/\r/g, "");
-
-      return NextResponse.json({ completion: rawCompletion });
-    } catch (fetchError: any) {
-      clearTimeout(timeoutId);
-      if (fetchError.name === "AbortError") {
-        console.warn("⚠️ CodeLlama inference stalled past timeout limits.");
-        return NextResponse.json({ completion: "" });
-      }
-      throw fetchError;
-    }
+    return NextResponse.json({ 
+      completion: rawCompletion.replace(/<\|file_separator\|>/g, "").trim() 
+    });
   } catch (error) {
-    console.error("AI_AUTOCOMPLETE_EXCEPTION:", error);
+    console.error("GROQ_AUTOCOMPLETE_ERROR:", error);
     return NextResponse.json({ completion: "" }, { status: 500 });
   }
 }
