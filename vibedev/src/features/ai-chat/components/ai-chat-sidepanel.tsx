@@ -64,9 +64,11 @@ const CodeSuggestionCard: React.FC<{ suggestion: any; onInsert: () => void; onCo
         </div>
       </div>
       <div className="border-t border-zinc-800/60">
-        <EnhancedCodeBlock className={`language-${suggestion.language}`} onInsert={onInsert}>
-          {suggestion.code}
-        </EnhancedCodeBlock>
+        <EnhancedCodeBlock
+  code={suggestion.code}
+  language={suggestion.language}
+  onApply={onInsert}
+/>
       </div>
     </div>
   );
