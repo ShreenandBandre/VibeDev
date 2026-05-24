@@ -6,10 +6,14 @@ import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 
+// 💡 If you have @webcontainer/api installed, you can import WebContainerProcess directly:
+// import type { WebContainerProcess } from "@webcontainer/api";
+
 interface TerminalTab {
   id: string;
   name: string;
-  process: unknown;
+  // Using an explicit shape here fixes the 'Property kill does not exist on type {}' error
+  process: { kill: () => void } | null; 
   inputWriter: WritableStreamDefaultWriter<string> | null;
   terminalInstance: Terminal | null;
   fitAddonInstance: FitAddon | null;
