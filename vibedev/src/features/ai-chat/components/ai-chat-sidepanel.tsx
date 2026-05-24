@@ -12,7 +12,7 @@ import remarkGfm from "remark-gfm";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { EnhancedCodeBlock } from "./ai-chat-code-blocks";
-import { EnhancedFilePreview } from "./file-preview";
+import {EnhancedFilePreview} from "./file-preview";
 
 // Re-use your MessageTypeIndicator layout code block
 const MessageTypeIndicator: React.FC<{ type?: string; model?: string; tokens?: number }> = ({ type, model, tokens }) => {
