@@ -47,7 +47,7 @@ export default auth((req) => {
   if (isAuthRoute) {
     if (isLoggedIn) {
       return NextResponse.redirect(
-        new URL(DEFAULT_LOGIN_REDIRECT, nextUrl)
+        new URL(DEFAULT_LOGIN_REDIRECT, req.url)
       );
     }
     return NextResponse.next();
@@ -56,7 +56,7 @@ export default auth((req) => {
   // 3. Secure Internal Protected Layouts
   if (!isLoggedIn && !isPublicRoute) {
     return NextResponse.redirect(
-      new URL("/auth/sign-in", nextUrl)
+      new URL("/auth/sign-in", req.url)
     );
   }
 
