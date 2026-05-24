@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-// 📁 This alias matching import line will now resolve flawlessly during next build loops!
-import type { TemplateFolder } from "../libs/path-to-json";
+import type { IDEFile } from "@/lib/store/use-ide-store";
 import { transformToWebContainerFormat } from "../hooks/transformer";
 import { Loader2, XCircle, GripHorizontal } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -14,7 +13,7 @@ import { MultiTabPreview } from "./multi-tab-preview";
 import { MultiTabTerminal } from "./multi-tab-terminal";
 
 interface WebContainerPreviewProps {
-  templateData: TemplateFolder;
+  templateData: Record<string, IDEFile> | any;
   error: string | null;
   instance: WebContainer | null;
   isLoading: boolean;
@@ -59,10 +58,8 @@ const WebContainerPreview: React.FC<WebContainerPreviewProps> = ({
       if (!isDragging || !containerRef.current) return;
       
       const containerRect = containerRef.current.getBoundingClientRect();
-      // Calculate the difference between the bottom edge and current mouse coordinate
       const calculatedHeight = containerRect.bottom - e.clientY;
       
-      // Set explicit boundaries so panels don't compress out of existence
       if (calculatedHeight > 120 && calculatedHeight < containerRect.height - 160) {
         setTerminalHeight(calculatedHeight);
       }
@@ -120,7 +117,27 @@ const WebContainerPreview: React.FC<WebContainerPreviewProps> = ({
         
         setCurrentStep(1);
         terminalRef.current?.writeToTerminal("🔄 Parsing system folder template schemas...\r\n");
-        const files = transformToWebContainerFormat(templateData);
+        
+        // 1. Extract files from object dictionary record Map format to Array
+        let rawFilesArray: any[] = [];
+        if (templateData && typeof templateData === "object") {
+          if (Array.isArray(templateData)) {
+            rawFilesArray = templateData;
+          } else if (templateData.items && Array.isArray(templateData.items)) {
+            rawFilesArray = templateData.items;
+          } else {
+            rawFilesArray = Object.values(templateData);
+          }
+        }
+
+        // 2. 🛡️ Build payload wrapper matching what transformer.ts line 25 needs
+        const structuredTemplatePayload = {
+          folderName: "root",
+          items: rawFilesArray
+        };
+
+        // 3. Run the project hook transformer with the safe structure
+        const files = transformToWebContainerFormat(structuredTemplatePayload as any);
 
         setCurrentStep(2);
         terminalRef.current?.writeToTerminal("📁 Initializing workspace directory structure mounts...\r\n");
@@ -145,12 +162,12 @@ const WebContainerPreview: React.FC<WebContainerPreviewProps> = ({
         setCurrentStep(4);
         terminalRef.current?.writeToTerminal("🚀 Booting development core runner: npm start...\r\n");
         const startProcess = await instance.spawn("npm", ["run", "dev"], {
-  env: {
-    CHOKIDAR_USEPOLLING: "true",  // Forces file watcher polling loops inside react-scripts
-    WATCHPACK_POLLING: "true",    // Forces underlying Webpack compile pooling triggers
-    WDS_SOCKET_PORT: "0",         // Prevents container frame hot-reload websocket collisions
-  }
-});
+          env: {
+            CHOKIDAR_USEPOLLING: "true",
+            WATCHPACK_POLLING: "true",
+            WDS_SOCKET_PORT: "0",
+          }
+        });
 
         instance.on("server-ready", (port: number, url: string) => {
           terminalRef.current?.writeToTerminal(`\r\n🌐 Live boundary rendered frame ready at: ${url}\r\n`);
