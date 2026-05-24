@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { WebContainer } from '@webcontainer/api';
-import type { TemplateFolder } from '@/features/playground/libs/path-to-json';
+import type { IDEFile } from '@/lib/store/use-ide-store';
 
 interface UseWebContainerReturn {
   serverUrl: string | null;
